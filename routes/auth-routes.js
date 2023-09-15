@@ -1,9 +1,8 @@
 /*
  * Filename: auth-routes.js
  * Author: Pallob Poddar
- * Date: September 5, 2023
+ * Date: September 15, 2023
  * Description: This module connects the authentication routes with the authentication controller
- * License: MIT
  */
 
 // Imports necessary modules

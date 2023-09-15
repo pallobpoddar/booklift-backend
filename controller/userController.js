@@ -1,65 +1,34 @@
 const { validationResult } = require("express-validator");
-const { success, failure } = require("../util/common");
+const sendResponse = require("../util/common");
 const userModel = require("../model/user");
 const HTTP_STATUS = require("../constants/statusCodes");
 
 class UserController {
-	async create(req, res) {
-		try {
-			const validation = validationResult(req).array();
-			if (validation.length > 0) {
-				return res
-					.status(HTTP_STATUS.OK)
-					.send(failure("Failed to add the user", validation));
-			}
-			const { name, email, phone } = req.body;
-			const user = new userModel({
-				name: name,
-				email: email,
-				phone: phone,
-			});
-
-			await user
-				.save()
-				.then((data) => {
-					return res
-						.status(HTTP_STATUS.OK)
-						.send(success("Successfully added the user", data));
-				})
-				.catch((err) => {
-					return res
-						.status(HTTP_STATUS.UNPROCESSABLE_ENTITY)
-						.send(failure("Failed to add the user"));
-				});
-		} catch (error) {
-			return res
-				.status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-				.send(failure("Internal server error"));
-		}
-	}
-
 	async getAll(req, res) {
 		try {
 			await userModel
 				.find({})
+				.select("-_id -createdAt -updatedAt -__v")
 				.then((users) => {
-					return res.status(HTTP_STATUS.OK).send(
-						success("Successfully received all users", {
+					return sendResponse(
+						res,
+						HTTP_STATUS.OK,
+						"Successfully received all users",
+						{
 							result: users,
 							total: users.length,
-						})
+						}
 					);
 				})
 				.catch((error) => {
-					return res
-						.status(HTTP_STATUS.OK)
-						.send(success("No users were found"));
+					return sendResponse(res, HTTP_STATUS.OK, "No user is found");
 				});
 		} catch (error) {
-			console.log(error);
-			return res
-				.status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-				.send(failure("Internal server error"));
+			return sendResponse(
+				res,
+				HTTP_STATUS.INTERNAL_SERVER_ERROR,
+				"Internal server error"
+			);
 		}
 	}
 

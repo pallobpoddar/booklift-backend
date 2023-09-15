@@ -1,13 +1,16 @@
 const express = require("express");
 const transactionRoutes = express();
 const transactionController = require("../controller/transactionController");
-const { isAuthorized, isAdmin } = require("../middleware/login-validation");
+const {
+	isAuthenticated,
+	isAuthorized,
+} = require("../middleware/login-validation");
 
 transactionRoutes.post("/checkout", transactionController.create);
 transactionRoutes.get(
 	"/all",
+	isAuthenticated,
 	isAuthorized,
-	isAdmin,
 	transactionController.getAll
 );
 

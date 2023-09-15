@@ -1,7 +1,7 @@
 /*
  * Filename: app.js
  * Author: Pallob Poddar
- * Date: September 14, 2023
+ * Date: September 15, 2023
  * Description: Root module: it connects the server with the routes and database
  */
 
@@ -41,8 +41,8 @@ app.use((err, req, res, next) => {
 
 // Sets up the routes; if the user provides any other routes, it returns an error
 app.use("/api/auths", authRouter);
-app.use("/api/products", productRouter);
 app.use("/api/users", userRouter);
+app.use("/api/products", productRouter);
 app.use("/api/transactions", transactionRouter);
 app.use("/api/carts", cartRouter);
 app.use("/api/reviews", reviewRouter);

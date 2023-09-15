@@ -1,3 +1,11 @@
+/*
+ * Filename: auth-controller.js
+ * Author: Pallob Poddar
+ * Date: September 15, 2023
+ * Description: This module connects the user and auth model and sends appropriate responses
+ */
+
+// Imports necessary modules
 const { validationResult } = require("express-validator");
 const bcrypt = require("bcrypt");
 const jsonwebtoken = require("jsonwebtoken");
@@ -6,9 +14,20 @@ const sendResponse = require("../util/common");
 const authModel = require("../model/auth");
 const userModel = require("../model/user");
 
+/**
+ * Represents an authentication controller
+ * @class
+ */
 class AuthController {
+	/**
+	 * Signup function for the users
+	 * @param {*} req
+	 * @param {*} res
+	 * @returns Response to the client
+	 */
 	async signup(req, res) {
 		try {
+			// If the user provides invalid information, it returns an error
 			const validation = validationResult(req).array();
 			if (validation.length > 0) {
 				return sendResponse(
@@ -19,10 +38,11 @@ class AuthController {
 				);
 			}
 
+			// Destructures necessary elements from request body
 			const { email, password, name, phone, birthday, gender } = req.body;
 
+			// If the user is not registered, it returns an error
 			const isRegistered = await userModel.findOne({ email: email });
-
 			if (isRegistered) {
 				return sendResponse(
 					res,
@@ -31,10 +51,12 @@ class AuthController {
 					"Conflict"
 				);
 			} else {
+				// Hashes the password
 				const hashedPassword = await bcrypt.hash(password, 10).then((hash) => {
 					return hash;
 				});
 
+				// Creates a user document
 				const user = await userModel.create({
 					name: name,
 					email: email,
@@ -43,12 +65,14 @@ class AuthController {
 					gender: gender,
 				});
 
+				// Converts the mongoDB document to a javascript object	and deletes unnecessary fields
 				const userFilteredInfo = user.toObject();
 				delete userFilteredInfo._id;
 				delete userFilteredInfo.createdAt;
 				delete userFilteredInfo.updatedAt;
 				delete userFilteredInfo.__v;
 
+				// Creates an auth document and returns user data
 				await authModel
 					.create({
 						email: email,
@@ -65,6 +89,7 @@ class AuthController {
 					});
 			}
 		} catch (error) {
+			// Returns an error
 			return sendResponse(
 				res,
 				HTTP_STATUS.INTERNAL_SERVER_ERROR,
@@ -73,50 +98,111 @@ class AuthController {
 		}
 	}
 
+	/**
+	 * Login function for the users and admins
+	 * @param {*} req
+	 * @param {*} res
+	 * @returns Response to the client
+	 */
 	async login(req, res) {
-		const { email, password } = req.body;
-		const auth = await authModel.findOne({ email: email }).populate("user");
-		if (!auth) {
-			return res.status(HTTP_STATUS.OK).send(failure("You are not registered"));
-		}
-		const checkPassword = await bcrypt.compare(password, auth.password);
-		if (!checkPassword) {
-			const failedAuth = await authModel.findOneAndUpdate(
-				{ email: email },
-				{ $inc: { failedAttempts: 1 } },
-				{ new: true }
-			);
-			if (failedAuth.failedAttempts < 5) {
-				return res.status(HTTP_STATUS.OK).send(failure("Invalid credentials"));
+		try {
+			// Destructures necessary elements from request body
+			const { email, password } = req.body;
+
+			// Populates user data from auth model and discards unnecessary fields
+			const auth = await authModel
+				.findOne({ email: email })
+				.populate("user", "-_id -email -createdAt -updatedAt -__v")
+				.select("-_id -createdAt -updatedAt -__v");
+
+			// If the user is not registered, it returns an error
+			if (!auth) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.UNAUTHORIZED,
+					"You are not registered",
+					"Unauthorized"
+				);
 			}
-			const blockedDuration = 60 * 60 * 1000;
-			const blockedObject = await authModel.findOneAndUpdate(
-				{ email: email },
-				{ blockedUntil: new Date(Date.now() + blockedDuration) },
-				{ new: true }
+
+			// Compares the user given password with hashed password using bcrypt
+			const checkPassword = await bcrypt.compare(password, auth.password);
+
+			// If passwords don't match, it increments failedAttempts by 1
+			if (!checkPassword) {
+				auth.failedAttempts += 1;
+
+				// If failedAttempts is less than 5, it returns a response
+				if (auth.failedAttempts < 5) {
+					auth.save();
+					return sendResponse(
+						res,
+						HTTP_STATUS.UNAUTHORIZED,
+						"Invalid credentials",
+						"Unauthorized"
+					);
+				}
+
+				// If failedAttempts is greater than or equal to 5, it blocks the user login for an hour
+				const blockedDuration = 60 * 60 * 1000;
+				auth.blockedUntil = new Date(Date.now() + blockedDuration);
+				auth.save();
+				return sendResponse(
+					res,
+					HTTP_STATUS.FORBIDDEN,
+					"Your login access has been blocked for an hour",
+					"Forbidden"
+				);
+			} else {
+				/* If passwords match, it checks whether or not the blocked duration is over
+				 * If it's over, it assigns failedAttempts and blockedUntil to 0 and null respectively
+				 */
+				if (auth.blockedUntil && auth.blockedUntil <= new Date(Date.now())) {
+					auth.failedAttempts = 0;
+					auth.blockedUntil = null;
+					auth.save();
+				} else if (
+					// If the blocked duration isn't over yet, it returns an error
+					auth.blockedUntil &&
+					auth.blockedUntil > new Date(Date.now())
+				) {
+					return sendResponse(
+						res,
+						HTTP_STATUS.FORBIDDEN,
+						`Please log in again at ${auth.blockedUntil}`,
+						"Forbidden"
+					);
+				}
+
+				// Converts the mongoDB document to a javascript object and deletes unnecessary fields
+				const responseAuth = auth.toObject();
+				delete responseAuth.password;
+				delete responseAuth.failedAttempts;
+
+				// Generates a jwt with an expiry time of 1 hour
+				const jwt = jsonwebtoken.sign(responseAuth, process.env.SECRET_KEY, {
+					expiresIn: "1h",
+				});
+
+				// Includes jwt to the javascript object and deletes unnecessary fields
+				responseAuth.token = jwt;
+				delete responseAuth.role;
+
+				// Returns user data
+				return sendResponse(
+					res,
+					HTTP_STATUS.OK,
+					"Successfully logged in",
+					responseAuth
+				);
+			}
+		} catch (error) {
+			// Returns an error
+			return sendResponse(
+				res,
+				HTTP_STATUS.INTERNAL_SERVER_ERROR,
+				"Internal server error"
 			);
-			return res
-				.status(HTTP_STATUS.OK)
-				.send(failure("Your login access has been blocked"));
-		} else {
-			const successfulAuth = await authModel.findOneAndUpdate(
-				{ email: email },
-				{ failedAttempts: 0 },
-				{ new: true }
-			);
-
-			const responseAuth = successfulAuth.toObject();
-			delete responseAuth.password;
-			delete responseAuth._id;
-
-			const jwt = jsonwebtoken.sign(responseAuth, process.env.SECRET_KEY, {
-				expiresIn: "1h",
-			});
-			responseAuth.token = jwt;
-
-			return res
-				.status(HTTP_STATUS.OK)
-				.send(success("Successfully logged in", responseAuth));
 		}
 	}
 }

@@ -1,9 +1,8 @@
 /*
  * Filename: signup-validation.js
  * Author: Pallob Poddar
- * Date: September 11, 2023
+ * Date: September 15, 2023
  * Description: This module is a middleware which authenticates the signup credentials
- * License: MIT
  */
 
 // Imports necessary modules

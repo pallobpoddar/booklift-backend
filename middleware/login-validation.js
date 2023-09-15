@@ -1,14 +1,31 @@
+/*
+ * Filename: login-validation.js
+ * Author: Pallob Poddar
+ * Date: September 15, 2023
+ * Description: This module is a middleware which authenticates the login credentials
+ */
+
+// Imports necessary modules
 const jsonwebtoken = require("jsonwebtoken");
 const HTTP_STATUS = require("../constants/statusCodes");
-const { failure } = require("../util/common");
-const authModel = require("../model/auth");
+const sendResponse = require("../util/common");
 
-const isAuthorized = (req, res, next) => {
+/**
+ * Authentication function for the users
+ * @param {*} req
+ * @param {*} res
+ * @param {*} next
+ * @returns Response to the client
+ */
+const isAuthenticated = (req, res, next) => {
 	try {
 		if (!req.headers.authorization) {
-			return res
-				.status(HTTP_STATUS.UNAUTHORIZED)
-				.send(failure("Unauthorized access"));
+			return sendResponse(
+				res,
+				HTTP_STATUS.UNAUTHORIZED,
+				"Unauthorized access",
+				"Unauthorized"
+			);
 		}
 		const jwt = req.headers.authorization.split(" ")[1];
 		const validate = jsonwebtoken.verify(jwt, process.env.SECRET_KEY);
@@ -18,26 +35,37 @@ const isAuthorized = (req, res, next) => {
 			throw new Error();
 		}
 	} catch (error) {
-		if (error instanceof jsonwebtoken.JsonWebTokenError) {
-			return res
-				.status(HTTP_STATUS.UNAUTHORIZED)
-				.send(failure("Token invalid"));
-		}
 		if (error instanceof jsonwebtoken.TokenExpiredError) {
-			return res
-				.status(HTTP_STATUS.UNAUTHORIZED)
-				.send(failure("Token expired"));
+			return sendResponse(
+				res,
+				HTTP_STATUS.UNAUTHORIZED,
+				"Token expired",
+				"Unauthorized"
+			);
+		}
+		if (error instanceof jsonwebtoken.JsonWebTokenError) {
+			return sendResponse(
+				res,
+				HTTP_STATUS.UNAUTHORIZED,
+				"Token invalid",
+				"Unauthorized"
+			);
 		}
 	}
 };
 
-const isAdmin = (req, res, next) => {
+const isAuthorized = (req, res, next) => {
 	const jwt = req.headers.authorization.split(" ")[1];
 	const user = jsonwebtoken.decode(jwt);
 	if (user.role !== 1) {
-		return res.status(HTTP_STATUS.UNAUTHORIZED).send(failure("Access denied"));
+		return sendResponse(
+			res,
+			HTTP_STATUS.UNAUTHORIZED,
+			"Access denied",
+			"Unauthorized"
+		);
 	}
 	next();
 };
 
-module.exports = { isAuthorized, isAdmin };
+module.exports = { isAuthenticated, isAuthorized };
