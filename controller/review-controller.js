@@ -2,7 +2,7 @@ const { validationResult } = require("express-validator");
 const { success, failure } = require("../util/common");
 const HTTP_STATUS = require("../constants/statusCodes");
 const UserModel = require("../model/user");
-const ProductModel = require("../model/product");
+const ProductModel = require("../model/book");
 const ReviewModel = require("../model/review");
 
 class ReviewController {

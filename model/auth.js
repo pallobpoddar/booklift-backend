@@ -1,5 +1,14 @@
+/*
+ * Filename: auth.js
+ * Author: Pallob Poddar
+ * Date: September 15, 2023
+ * Description: This module defines the auths collection schema
+ */
+
+// Imports necessary modules
 const mongoose = require("mongoose");
 
+// Creates a auth schema with necessary fields
 const authSchema = new mongoose.Schema(
 	{
 		email: {
@@ -34,5 +43,6 @@ const authSchema = new mongoose.Schema(
 	{ timestamps: true }
 );
 
+// Creates a model with the auth schema and exports it
 const Auth = mongoose.model("Auth", authSchema);
 module.exports = Auth;

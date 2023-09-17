@@ -1,15 +1,15 @@
 /*
- * Filename: signup-validation.js
+ * Filename: authValidation.js
  * Author: Pallob Poddar
- * Date: September 15, 2023
- * Description: This module is a middleware which authenticates the signup credentials
+ * Date: September 16, 2023
+ * Description: This module is a middleware which authenticates the signup and login credentials
  */
 
 // Imports necessary modules
 const { body } = require("express-validator");
 
-// The signup array validates the required fields given from request body
-const signupValidator = {
+// The signup and login array validates the required fields given from request body
+const authValidator = {
 	signup: [
 		body("email")
 			.exists()
@@ -68,10 +68,19 @@ const signupValidator = {
 			.withMessage("Enter a date of birth in this format, 'mm-dd-yyyy'"),
 		body("gender")
 			.optional()
-			.isIn(["male", "female", "non-binary"])
-			.withMessage("Gender can be male, female or non-binary"),
+			.isIn(["Male", "Female", "Non-binary"])
+			.withMessage("Gender can be Male, Female or Non-binary"),
 	],
+
+	login: [
+		body("email")
+			.exists()
+			.withMessage("Enter your email"),
+		body("password")
+		.exists()
+		.withMessage("Enter your password")
+	]
 };
 
 // Exports the validator
-module.exports = signupValidator;
+module.exports = authValidator;

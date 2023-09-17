@@ -4,7 +4,7 @@ const transactionController = require("../controller/transactionController");
 const {
 	isAuthenticated,
 	isAuthorized,
-} = require("../middleware/login-validation");
+} = require("../middleware/tokenValidation");
 
 transactionRoutes.post("/checkout", transactionController.create);
 transactionRoutes.get(
