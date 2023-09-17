@@ -1,18 +1,18 @@
 /*
- * Filename: auth-controller.js
+ * Filename: authController.js
  * Author: Pallob Poddar
- * Date: September 15, 2023
+ * Date: September 16, 2023
  * Description: This module connects the user and auth model and sends appropriate responses
  */
 
 // Imports necessary modules
 const { validationResult } = require("express-validator");
+const sendResponse = require("../util/common");
+const HTTP_STATUS = require("../constants/statusCodes");
+const userModel = require("../model/user");
+const authModel = require("../model/auth");
 const bcrypt = require("bcrypt");
 const jsonwebtoken = require("jsonwebtoken");
-const HTTP_STATUS = require("../constants/statusCodes");
-const sendResponse = require("../util/common");
-const authModel = require("../model/auth");
-const userModel = require("../model/user");
 
 /**
  * Represents an authentication controller
@@ -20,7 +20,7 @@ const userModel = require("../model/user");
  */
 class AuthController {
 	/**
-	 * Signup function for the users
+	 * Signup function for users
 	 * @param {*} req
 	 * @param {*} res
 	 * @returns Response to the client
@@ -41,71 +41,93 @@ class AuthController {
 			// Destructures necessary elements from request body
 			const { email, password, name, phone, birthday, gender } = req.body;
 
-			// If the user is not registered, it returns an error
-			const isRegistered = await userModel.findOne({ email: email });
-			if (isRegistered) {
+			// If the user is already registered, it returns an error
+			const emailRegistered = await userModel.findOne({ email: email });
+			const phoneRegistered = await userModel.findOne({ phone: phone });
+			if (emailRegistered) {
 				return sendResponse(
 					res,
 					HTTP_STATUS.CONFLICT,
-					"You are already registered",
+					"Email already exists",
 					"Conflict"
 				);
-			} else {
-				// Hashes the password
-				const hashedPassword = await bcrypt.hash(password, 10).then((hash) => {
+			} else if (phoneRegistered) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.CONFLICT,
+					"Phone number already exists",
+					"Conflict"
+				);
+			}
+
+			// Hashes the password
+			const hashedPassword = await bcrypt
+				.hash(password, 10)
+				.then((hash) => {
 					return hash;
 				});
 
-				// Creates a user document
-				const user = await userModel.create({
-					name: name,
+			// Creates a user document
+			const user = await userModel.create({
+				name: name,
+				email: email,
+				phone: phone,
+				birthday: birthday,
+				gender: gender,
+			});
+
+			// Converts the mongoDB document to a javascript object	and deletes unnecessary fields
+			const userFilteredInfo = user.toObject();
+			delete userFilteredInfo._id;
+			delete userFilteredInfo.createdAt;
+			delete userFilteredInfo.updatedAt;
+			delete userFilteredInfo.__v;
+
+			// Creates an auth document and returns user data
+			await authModel
+				.create({
 					email: email,
-					phone: phone,
-					birthday: birthday,
-					gender: gender,
+					password: hashedPassword,
+					user: user._id,
+				})
+				.then((data) => {
+					return sendResponse(
+						res,
+						HTTP_STATUS.OK,
+						"Successfully signed up",
+						userFilteredInfo
+					);
 				});
-
-				// Converts the mongoDB document to a javascript object	and deletes unnecessary fields
-				const userFilteredInfo = user.toObject();
-				delete userFilteredInfo._id;
-				delete userFilteredInfo.createdAt;
-				delete userFilteredInfo.updatedAt;
-				delete userFilteredInfo.__v;
-
-				// Creates an auth document and returns user data
-				await authModel
-					.create({
-						email: email,
-						password: hashedPassword,
-						user: user._id,
-					})
-					.then((data) => {
-						return sendResponse(
-							res,
-							HTTP_STATUS.OK,
-							"Successfully signed up",
-							userFilteredInfo
-						);
-					});
-			}
 		} catch (error) {
 			// Returns an error
 			return sendResponse(
 				res,
 				HTTP_STATUS.INTERNAL_SERVER_ERROR,
-				"Internal server error"
+				"Internal server error",
+				"Server error"
 			);
 		}
 	}
 
 	/**
-	 * Login function for the users and admins
+	 * Login function for users and admins
 	 * @param {*} req
 	 * @param {*} res
 	 * @returns Response to the client
 	 */
 	async login(req, res) {
 		try {
+			// If the user provides invalid information, it returns an error
+			const validation = validationResult(req).array();
+			if (validation.length > 0) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.UNPROCESSABLE_ENTITY,
+					"Failed to log in",
+					validation
+				);
+			}
+
 			// Destructures necessary elements from request body
 			const { email, password } = req.body;
 
@@ -157,7 +179,10 @@ class AuthController {
 				/* If passwords match, it checks whether or not the blocked duration is over
 				 * If it's over, it assigns failedAttempts and blockedUntil to 0 and null respectively
 				 */
-				if (auth.blockedUntil && auth.blockedUntil <= new Date(Date.now())) {
+				if (
+					auth.blockedUntil &&
+					auth.blockedUntil <= new Date(Date.now())
+				) {
 					auth.failedAttempts = 0;
 					auth.blockedUntil = null;
 					auth.save();
@@ -178,11 +203,16 @@ class AuthController {
 				const responseAuth = auth.toObject();
 				delete responseAuth.password;
 				delete responseAuth.failedAttempts;
+				delete responseAuth.blockedUntil;
 
 				// Generates a jwt with an expiry time of 1 hour
-				const jwt = jsonwebtoken.sign(responseAuth, process.env.SECRET_KEY, {
-					expiresIn: "1h",
-				});
+				const jwt = jsonwebtoken.sign(
+					responseAuth,
+					process.env.SECRET_KEY,
+					{
+						expiresIn: "1h",
+					}
+				);
 
 				// Includes jwt to the javascript object and deletes unnecessary fields
 				responseAuth.token = jwt;
@@ -201,10 +231,12 @@ class AuthController {
 			return sendResponse(
 				res,
 				HTTP_STATUS.INTERNAL_SERVER_ERROR,
-				"Internal server error"
+				"Internal server error",
+				"Server error"
 			);
 		}
 	}
 }
 
+// Exports the authentication controller
 module.exports = new AuthController();
