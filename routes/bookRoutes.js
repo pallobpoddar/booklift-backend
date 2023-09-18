@@ -1,7 +1,7 @@
 /*
  * Filename: bookRoutes.js
  * Author: Pallob Poddar
- * Date: September 16, 2023
+ * Date: September 18, 2023
  * Description: This module connects the book routes with the book controller
  */
 
@@ -23,19 +23,24 @@ bookRoutes.post(
 	bookValidator.bookAdd,
 	bookController.add
 );
-bookRoutes.get("/all", bookController.getAll);
+bookRoutes.get(
+	"/all",
+	isAuthenticated,
+	bookValidator.commonValidation,
+	bookController.getAll
+);
 bookRoutes.patch(
 	"/update-one-by-id/:id",
 	isAuthenticated,
 	isAuthorized,
-	bookValidator.bookUpdate,
+	bookValidator.commonValidation,
 	bookController.updateOneByID
 );
 bookRoutes.delete(
 	"/delete-one-by-id/:id",
 	isAuthenticated,
 	isAuthorized,
-	bookValidator.bookDelete,
+	bookValidator.commonValidation,
 	bookController.deleteOneByID
 );
 

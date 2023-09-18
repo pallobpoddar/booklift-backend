@@ -1,47 +1,69 @@
+/*
+ * Filename: cartController.js
+ * Author: Pallob Poddar
+ * Date: September 18, 2023
+ * Description: This module connects the cart model and sends appropriate responses
+ */
+
+// Imports necessary modules
 const { validationResult } = require("express-validator");
-const { success, failure } = require("../util/common");
-const CartModel = require("../model/cart");
-const UserModel = require("../model/user");
-const ProductModel = require("../model/book");
-const TransactionModel = require("../model/transaction");
+const sendResponse = require("../util/common");
+const cartModel = require("../model/cart");
+const userModel = require("../model/user");
+const bookModel = require("../model/book");
+const transactionModel = require("../model/transaction");
 const HTTP_STATUS = require("../constants/statusCodes");
-const mongoose = require("mongoose");
 
 class CartController {
-	async addItems(req, res) {
+	async add(req, res) {
 		try {
+			// If the user provides invalid information, it returns an error
 			const validation = validationResult(req).array();
 			if (validation.length > 0) {
-				return res
-					.status(HTTP_STATUS.OK)
-					.send(failure("Failed to add items", validation));
+				return sendResponse(
+					res,
+					HTTP_STATUS.UNPROCESSABLE_ENTITY,
+					"Failed to add the book",
+					validation
+				);
 			}
 
+			// Destructures necessary elements from request body
 			const { userId, productId, quantity } = req.body;
 
-			const user = await UserModel.findById({ _id: userId });
+			// If the user is not registered, it returns an error
+			const user = await userModel.findById({ _id: userId });
 			if (!user) {
-				return res
-					.status(HTTP_STATUS.OK)
-					.send(failure("You are not registered"));
+				return sendResponse(
+					res,
+					HTTP_STATUS.UNAUTHORIZED,
+					"You are not registered",
+					"Unauthorized"
+				);
 			}
 
-			const product = await ProductModel.findById({ _id: productId });
-			if (!product) {
-				return res
-					.status(HTTP_STATUS.OK)
-					.send(failure("There's no such product"));
+			// If the book is not registered, it returns an error
+			const book = await bookModel.findById({ _id: productId });
+			if (!book) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.NOT_FOUND,
+					"Book is not registered",
+					"Not found"
+				);
 			}
-			const productObject = product.toObject();
-			let cartObject = await CartModel.findById({ user: userId });
+
+			// Converts the mongoDB document to a javascript object	and deletes unnecessary fields
+			const bookObject = book.toObject();
+			let cartObject = await cartModel.findById({ user: userId });
 			if (!cartObject) {
-				const cart = new CartModel({
+				const cart = new cartModel({
 					user: userId,
 					products: {
-						product: productId,
+						book: productId,
 						quantity: quantity,
 					},
-					total: productObject.price * quantity,
+					total: bookObject.price * quantity,
 				});
 
 				await cart
@@ -60,10 +82,10 @@ class CartController {
 				let removeFlag = false;
 				let responseFlag = false;
 				cartObject.products.forEach((data) => {
-					const productIdToString = String(data.product);
+					const productIdToString = String(data.book);
 					if (productIdToString === productId) {
 						removeFlag = true;
-						if (data.quantity + quantity <= productObject.stock) {
+						if (data.quantity + quantity <= bookObject.stock) {
 							data.quantity = data.quantity + quantity;
 						} else {
 							responseFlag = true;
@@ -77,12 +99,12 @@ class CartController {
 
 				if (removeFlag === false) {
 					const newProduct = {
-						product: productId,
+						book: productId,
 						quantity: quantity,
 					};
 					cartObject.products.push(newProduct);
 				}
-				cartObject.total = cartObject.total + productObject.price * quantity;
+				cartObject.total = cartObject.total + bookObject.price * quantity;
 				await cartObject
 					.save()
 					.then((data) => {
@@ -114,21 +136,19 @@ class CartController {
 
 			const { userId, productId, quantity } = req.body;
 
-			const user = await UserModel.findById({ _id: userId });
+			const user = await userModel.findById({ _id: userId });
 			if (!user) {
 				return res
 					.status(HTTP_STATUS.OK)
 					.send(failure("You are not registered"));
 			}
 
-			const product = await ProductModel.findById({ _id: productId });
-			if (!product) {
-				return res
-					.status(HTTP_STATUS.OK)
-					.send(failure("There's no such product"));
+			const book = await bookModel.findById({ _id: productId });
+			if (!book) {
+				return res.status(HTTP_STATUS.OK).send(failure("There's no such book"));
 			}
-			const productObject = product.toObject();
-			let cartObject = await CartModel.findById({ user: userId });
+			const bookObject = book.toObject();
+			let cartObject = await cartModel.findById({ user: userId });
 			if (!cartObject) {
 				return res
 					.status(HTTP_STATUS.OK)
@@ -137,7 +157,7 @@ class CartController {
 				let removeFlag = false;
 				let responseFlag = false;
 				cartObject.products.forEach((data) => {
-					const productIdToString = String(data.product);
+					const productIdToString = String(data.book);
 					if (productIdToString === productId) {
 						removeFlag = true;
 						if (data.quantity - quantity >= 0) {
@@ -157,10 +177,10 @@ class CartController {
 				if (removeFlag === false) {
 					return res
 						.status(HTTP_STATUS.OK)
-						.send(failure("You don't have this product in your cart"));
+						.send(failure("You don't have this book in your cart"));
 				}
 
-				cartObject.total = cartObject.total - productObject.price * quantity;
+				cartObject.total = cartObject.total - bookObject.price * quantity;
 				await cartObject
 					.save()
 					.then((data) => {
@@ -191,14 +211,14 @@ class CartController {
 			}
 
 			const { cartId } = req.body;
-			const cart = await CartModel.findById({ _id: cartId });
+			const cart = await cartModel.findById({ _id: cartId });
 			if (!cart) {
 				return res.status(HTTP_STATUS.OK).send(failure("There's no such cart"));
 			} else {
 			}
 
 			const cartObject = cart.toObject();
-			const transaction = new TransactionModel({
+			const transaction = new transactionModel({
 				cart: cartId,
 				user: cartObject.user,
 				products: cartObject.products,

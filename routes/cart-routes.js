@@ -9,14 +9,20 @@
 // Imports necessary modules
 const express = require("express");
 const cartRoutes = express();
-const cartValidator = require("../middleware/cart-validation");
-const cartController = require("../controller/cart-controller");
+const cartValidator = require("../middleware/cartValidation");
+const cartController = require("../controller/cartController");
+const { isAuthenticated } = require("../middleware/tokenValidation");
 
 // Sets up the routes, invokes corresponding APIs and authentication controller methods
-cartRoutes.post("/add-items", cartValidator.cart, cartController.addItems);
+cartRoutes.post(
+	"/add",
+	isAuthenticated,
+	cartValidator.cartAdd,
+	cartController.add
+);
 cartRoutes.post(
 	"/remove-items",
-	cartValidator.cart,
+	cartValidator.cartAdd,
 	cartController.removeItems
 );
 
