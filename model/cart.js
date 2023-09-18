@@ -1,5 +1,14 @@
+/*
+ * Filename: cart.js
+ * Author: Pallob Poddar
+ * Date: September 18, 2023
+ * Description: This module defines the carts collection schema
+ */
+
+// Imports necessary modules
 const mongoose = require("mongoose");
 
+// Creates a cart schema with necessary fields
 const cartSchema = new mongoose.Schema(
 	{
 		user: {
@@ -25,5 +34,6 @@ const cartSchema = new mongoose.Schema(
 	{ timestamps: true }
 );
 
-const Cart = mongoose.model("Cart", cartSchema);
-module.exports = Cart;
+// Creates a model with the cart schema and exports it
+const cart = mongoose.model("Cart", cartSchema);
+module.exports = cart;

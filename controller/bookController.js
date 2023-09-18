@@ -1,7 +1,7 @@
 /*
  * Filename: bookController.js
  * Author: Pallob Poddar
- * Date: September 17, 2023
+ * Date: September 18, 2023
  * Description: This module connects the book model and sends appropriate responses
  */
 
@@ -24,7 +24,7 @@ class bookController {
 	 */
 	async add(req, res) {
 		try {
-			// If the book provides invalid information, it returns an error
+			// If the user provides invalid information, it returns an error
 			const validation = validationResult(req).array();
 			if (validation.length > 0) {
 				return sendResponse(
@@ -99,76 +99,96 @@ class bookController {
 		}
 	}
 
+	/**
+	 * Retrieve function to get all books' data
+	 * @param {*} req
+	 * @param {*} res
+	 * @returns Response to the client
+	 */
 	async getAll(req, res) {
 		try {
-			const {
+			// If the user provides invalid information, it returns an error
+			const validation = validationResult(req).array();
+			if (validation.length > 0) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.UNPROCESSABLE_ENTITY,
+					"Failed to add the book",
+					validation
+				);
+			}
+
+			// Destructures necessary elements from request query
+			let {
 				page,
 				limit,
-				title,
 				author,
 				year,
-				description,
+				yearFill,
 				language,
 				category,
-				isbn,
 				price,
 				priceFill,
-				discountPercentage,
-				discountPercentageFill,
 				stock,
 				stockFill,
 				search,
 				sortParam,
 				sortOrder,
 			} = req.query;
-			if (page < 1 || limit < 0) {
-				return res
-					.status(HTTP_STATUS.UNPROCESSABLE_ENTITY)
-					.send(
-						failure(
-							"Page and limit values must be at least 1 and 0 respectively"
-						)
-					);
-			}
 
+			// Creates a filter object and adds filter to it dynamically
 			let filter = {};
+			if (author) {
+				filter.author = { $regex: author, $options: "i" };
+			}
+			if (year && yearFill) {
+				if (yearFill === "low") {
+					filter.year = { $lte: parseInt(year) };
+				} else if (yearFill === "high") {
+					filter.year = { $gte: parseInt(year) };
+				}
+			} else if ((year && !yearFill) || (!year && yearFill)) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.UNPROCESSABLE_ENTITY,
+					"Both year and yearFill need to be selected",
+					"Unprocessable entity"
+				);
+			}
+			if (language) {
+				filter.language = { $regex: language, $options: "i" };
+			}
 			if (price) {
 				if (priceFill === "low") {
 					filter.price = { $lte: parseFloat(price) };
 				} else if (priceFill === "high") {
 					filter.price = { $gte: parseFloat(price) };
 				}
+			} else if ((price && !priceFill) || (!price && priceFill)) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.UNPROCESSABLE_ENTITY,
+					"Both price and priceFill need to be selected",
+					"Unprocessable entity"
+				);
 			}
-			if (discountPercentage) {
-				if (discountPercentageFill === "low") {
-					filter.discountPercentage = {
-						$lte: parseFloat(discountPercentage),
-					};
-				} else if (discountPercentageFill === "high") {
-					filter.discountPercentage = {
-						$gte: parseFloat(discountPercentage),
-					};
-				}
-			}
-			if (rating) {
-				if (ratingFill === "low") {
-					filter.rating = { $lte: parseFloat(rating) };
-				} else if (ratingFill === "high") {
-					filter.rating = { $gte: parseFloat(rating) };
-				}
-			}
+
 			if (stock) {
 				if (stockFill === "low") {
-					filter.stock = { $lte: parseFloat(stock) };
+					filter.stock = { $lte: parseInt(stock) };
 				} else if (stockFill === "high") {
-					filter.stock = { $gte: parseFloat(stock) };
+					filter.stock = { $gte: parseInt(stock) };
 				}
-			}
-			if (brand) {
-				filter.brand = { $regex: brand, $options: "i" };
+			} else if ((stock && !stockFill) || (!stock && stockFill)) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.UNPROCESSABLE_ENTITY,
+					"Both stock and stockFill need to be selected",
+					"Unprocessable entity"
+				);
 			}
 			if (category) {
-				filter.category = category.toLowerCase();
+				filter.category = { $regex: category, $options: "i" };
 			}
 			if (search) {
 				filter["$or"] = [
@@ -176,44 +196,48 @@ class bookController {
 					{ description: { $regex: search, $options: "i" } },
 				];
 			}
-			if (!limit) {
-				limit = 20;
-			}
-			if (limit > 50) {
-				limit = 50;
-			}
 			if (!page) {
 				page = 1;
 			}
+			if (!limit) {
+				limit = 20;
+			}
 
-			let products;
-			products = await bookModel
+			// Retrieves book data, unselects unnecessary fields, set sort, skip and limit criteria according to the user needs.
+			const books = await bookModel
 				.find(filter)
+				.select("-_id -createdAt -updatedAt -__v")
 				.sort({
 					[sortParam]: sortOrder === "asc" ? 1 : -1,
 				})
 				.skip((page - 1) * limit)
 				.limit(limit);
 
-			if (products.length === 0) {
-				return res
-					.status(HTTP_STATUS.NOT_FOUND)
-					.send(failure("No products were found"));
+			// If no book is found, it returns an error
+			if (books.length === 0) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.NOT_FOUND,
+					"No books were found",
+					"Not found"
+				);
 			}
 
-			return res.status(HTTP_STATUS.OK).send(
-				success("Successfully got all products", {
-					countPerPage: products.length,
-					page: parseInt(page),
-					limit: parseInt(limit),
-					products: products,
-				})
-			);
+			// Otherwise returns count per page, page, limit and book data as response
+			return sendResponse(res, HTTP_STATUS.OK, "Successfully got all books", {
+				countPerPage: books.length,
+				page: parseInt(page),
+				limit: parseInt(limit),
+				books: books,
+			});
 		} catch (error) {
-			console.log(error);
-			return res
-				.status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-				.send(failure("Internal server error"));
+			// Returns an error
+			return sendResponse(
+				res,
+				HTTP_STATUS.INTERNAL_SERVER_ERROR,
+				"Internal server error",
+				"Server error"
+			);
 		}
 	}
 

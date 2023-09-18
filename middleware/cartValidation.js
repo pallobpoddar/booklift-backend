@@ -1,9 +1,8 @@
 /*
- * Filename: cart-validation.js
+ * Filename: cartValidation.js
  * Author: Pallob Poddar
- * Date: September 8, 2023
+ * Date: September 18, 2023
  * Description: This module is a middleware which authenticates the cart credentials
- * License: MIT
  */
 
 // Imports necessary modules
@@ -11,7 +10,7 @@ const { body } = require("express-validator");
 
 // The cart and checkout array validates the required fields given from request body
 const cartValidator = {
-	cart: [
+	cartAdd: [
 		body("userId")
 			.exists()
 			.withMessage("User Id must be provided")

@@ -1,14 +1,14 @@
 /*
  * Filename: bookValidation.js
  * Author: Pallob Poddar
- * Date: September 17, 2023
+ * Date: September 18, 2023
  * Description: This module is a middleware which authenticates the book credentials
  */
 
 // Imports necessary modules
-const { body, param } = require("express-validator");
+const { check, body, param, query } = require("express-validator");
 
-// The bookAdd, bookUpdate and bookDelete arrays validate the required fields given from request body and parameter
+// The bookAdd, paramCheck, commonValidation arrays validate the required fields given from request body, parameter and query
 const bookValidator = {
 	bookAdd: [
 		body("title")
@@ -106,9 +106,17 @@ const bookValidator = {
 			.withMessage("Stock must be between 1 and 10000"),
 	],
 
-	bookUpdate: [
-		param("id").isMongoId().withMessage("Enter a valid MongoDB Id"),
-		body("title")
+	commonValidation: [
+		param("id").optional().isMongoId().withMessage("Enter a valid MongoDB Id"),
+		query("page")
+			.optional()
+			.isInt({ min: 1, max: 100 })
+			.withMessage("Page number must be between 1 and 100"),
+		query("limit")
+			.optional()
+			.isInt({ min: 0, max: 50 })
+			.withMessage("Limit must be between 0 and 50"),
+		check("title")
 			.optional()
 			.isString()
 			.withMessage("Title must be in words")
@@ -119,7 +127,7 @@ const bookValidator = {
 			.bail()
 			.isLength({ max: 100 })
 			.withMessage("Title must be within 100 characters"),
-		body("author")
+		check("author")
 			.optional()
 			.isString()
 			.withMessage("Author must be in words")
@@ -130,11 +138,15 @@ const bookValidator = {
 			.bail()
 			.isLength({ max: 30 })
 			.withMessage("Author must be within 30 characters"),
-		body("year")
+		check("year")
 			.optional()
 			.isInt({ min: 1, max: 2023 })
 			.withMessage("Enter a valid publication year"),
-		body("description")
+		query("yearFill")
+			.optional()
+			.isIn(["high", "low"])
+			.withMessage("Year Fill can only be high or low"),
+		check("description")
 			.optional()
 			.isString()
 			.withMessage("Description must be in words")
@@ -145,7 +157,7 @@ const bookValidator = {
 			.bail()
 			.isLength({ max: 1000 })
 			.withMessage("Description must be within 1000 characters"),
-		body("language")
+		check("language")
 			.optional()
 			.isString()
 			.withMessage("Language must be in words")
@@ -156,7 +168,7 @@ const bookValidator = {
 			.bail()
 			.isLength({ max: 30 })
 			.withMessage("Language must be within 30 characters"),
-		body("category")
+		check("category")
 			.optional()
 			.isString()
 			.withMessage("Category must be in words")
@@ -167,26 +179,46 @@ const bookValidator = {
 			.bail()
 			.isLength({ max: 50 })
 			.withMessage("Category must be within 50 characters"),
-		body("isbn")
-			.optional()
-			.isISBN()
-			.withMessage("Enter a valid ISBN number"),
-		body("price")
+		check("isbn").optional().isISBN().withMessage("Enter a valid ISBN number"),
+		check("price")
 			.optional()
 			.isFloat({ min: 10, max: 10000 })
 			.withMessage("Price must be between 10 and 10000"),
-		body("discountPercentage")
+		query("priceFill")
+			.optional()
+			.isIn(["high", "low"])
+			.withMessage("Price Fill can only be high or low"),
+		check("discountPercentage")
 			.optional()
 			.isFloat({ min: 1, max: 80 })
 			.withMessage("Discount percentage must be between 1 and 80"),
-		body("stock")
+		check("stock")
 			.optional()
 			.isInt({ min: 1, max: 10000 })
 			.withMessage("Stock must be between 1 and 10000"),
-	],
-
-	bookDelete: [
-		param("id").isMongoId().withMessage("Enter a valid MongoDB Id"),
+		query("stockFill")
+			.optional()
+			.isIn(["high", "low"])
+			.withMessage("Stock Fill can only be high or low"),
+		query("search")
+			.optional()
+			.isString()
+			.withMessage("Search must be in words")
+			.bail()
+			.trim()
+			.notEmpty()
+			.withMessage("Search can't be empty")
+			.bail()
+			.isLength({ max: 50 })
+			.withMessage("Search must be within 50 characters"),
+		query("sortParam")
+			.optional()
+			.isIn(["year", "price", "stock"])
+			.withMessage("Only year, price and stock can be sorted"),
+		query("sortOrder")
+			.optional()
+			.isIn(["asc", "dsc"])
+			.withMessage("Sort order can only be asc or dsc"),
 	],
 };
 

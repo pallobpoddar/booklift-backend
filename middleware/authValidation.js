@@ -48,6 +48,7 @@ const authValidator = {
 			.isString()
 			.withMessage("Name can't consist any number")
 			.bail()
+			.trim()
 			.notEmpty()
 			.withMessage("Name can't be empty")
 			.bail()
@@ -64,6 +65,7 @@ const authValidator = {
 			.isString()
 			.withMessage("Enter a date of birth in this format, 'mm-dd-yyyy'")
 			.bail()
+			.trim()
 			.isLength(10)
 			.withMessage("Enter a date of birth in this format, 'mm-dd-yyyy'"),
 		body("gender")
@@ -73,13 +75,9 @@ const authValidator = {
 	],
 
 	login: [
-		body("email")
-			.exists()
-			.withMessage("Enter your email"),
-		body("password")
-		.exists()
-		.withMessage("Enter your password")
-	]
+		body("email").exists().withMessage("Enter your email"),
+		body("password").exists().withMessage("Enter your password"),
+	],
 };
 
 // Exports the validator
