@@ -6,7 +6,7 @@ const {
 	isAuthorized,
 } = require("../middleware/tokenValidation");
 
-transactionRoutes.post("/checkout", transactionController.create);
+transactionRoutes.post("/checkout", transactionController.add);
 transactionRoutes.get(
 	"/all",
 	isAuthenticated,

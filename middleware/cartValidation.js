@@ -10,34 +10,34 @@ const { body } = require("express-validator");
 
 // The cart and checkout array validates the required fields given from request body
 const cartValidator = {
-	cartAdd: [
+	cart: [
 		body("userId")
 			.exists()
 			.withMessage("User Id must be provided")
 			.bail()
 			.isMongoId()
 			.withMessage("User ID is not in valid mongoDB format"),
-		body("productId")
+		body("bookId")
 			.exists()
-			.withMessage("Product ID must be provided")
+			.withMessage("Book ID must be provided")
 			.bail()
 			.isMongoId()
-			.withMessage("Product ID is not in valid mongoDB format"),
+			.withMessage("Book ID is not in valid mongoDB format"),
 		body("quantity")
 			.exists()
-			.withMessage("Product quantity must be provided")
+			.withMessage("Quantity must be provided")
 			.bail()
-			.isInt({ min: 1 })
-			.withMessage("Quantity must be one or above"),
+			.isInt({ min: 1, max: 1000 })
+			.withMessage("Quantity must between 1 and 1000"),
 	],
 
 	checkout: [
-		body("cartId")
+		body("userId")
 			.exists()
-			.withMessage("Cart ID must be provided")
+			.withMessage("User ID must be provided")
 			.bail()
 			.isMongoId()
-			.withMessage("Cart ID is not in valid mongoDB format"),
+			.withMessage("User ID is not in valid mongoDB format"),
 	],
 };
 

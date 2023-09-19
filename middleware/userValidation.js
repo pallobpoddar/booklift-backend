@@ -27,23 +27,14 @@ const userValidator = {
 			.optional()
 			.isMobilePhone("bn-BD")
 			.withMessage("Phone number is not valid"),
-		body("birthday")
-			.optional()
-			.isString()
-			.withMessage("Enter a date of birth in this format, 'mm-dd-yyyy'")
-			.bail()
-			.trim()
-			.isLength(10)
-			.withMessage("Enter a date of birth in this format, 'mm-dd-yyyy'"),
+		body("birthday").optional().isISO8601().withMessage("Enter a valid date"),
 		body("gender")
 			.optional()
 			.isIn(["Male", "Female", "Non-binary"])
 			.withMessage("Gender can be Male, Female or Non-binary"),
 	],
 
-	userDelete: [
-		param("id").isMongoId().withMessage("Enter a valid MongoDB Id"),
-	],
+	userDelete: [param("id").isMongoId().withMessage("Enter a valid MongoDB Id")],
 };
 
 // Exports the validator

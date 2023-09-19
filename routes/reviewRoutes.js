@@ -1,24 +1,24 @@
 /*
- * Filename: review-routes.js
+ * Filename: reviewRoutes.js
  * Author: Pallob Poddar
- * Date: September 11, 2023
+ * Date: September 19, 2023
  * Description: This module connects the review routes with the review controller
- * License: MIT
  */
 
 // Imports necessary modules
 const express = require("express");
 const reviewRoutes = express();
-const reviewValidator = require("../middleware/review-validation");
-const reviewController = require("../controller/review-controller");
+const reviewValidator = require("../middleware/reviewValidation");
+const reviewController = require("../controller/reviewController");
+const { isAuthenticated } = require("../middleware/tokenValidation");
 
 // Sets up the routes, invokes corresponding APIs and review controller methods
 reviewRoutes.post(
-	"/review-item",
-	reviewValidator.review,
-	reviewController.addReview
+	"/add",
+	isAuthenticated,
+	reviewValidator.reviewAdd,
+	reviewController.add
 );
-reviewRoutes.get("/get-all", reviewController.getReview);
 
 // Exports the review routes
 module.exports = reviewRoutes;
