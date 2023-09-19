@@ -1,5 +1,14 @@
+/*
+ * Filename: transaction.js
+ * Author: Pallob Poddar
+ * Date: September 19, 2023
+ * Description: This module defines the transactions collection schema
+ */
+
+// Imports necessary modules
 const mongoose = require("mongoose");
 
+// Creates a transaction schema with necessary fields
 const transactionSchema = new mongoose.Schema(
 	{
 		user: {
@@ -7,10 +16,10 @@ const transactionSchema = new mongoose.Schema(
 			ref: "User",
 			required: true,
 		},
-		products: {
+		books: {
 			type: [
 				{
-					product: {
+					book: {
 						type: mongoose.Types.ObjectId,
 						ref: "Product",
 						required: true,
@@ -28,5 +37,6 @@ const transactionSchema = new mongoose.Schema(
 	{ timestamps: true }
 );
 
-const Transaction = mongoose.model("transactions", transactionSchema);
-module.exports = Transaction;
+// Creates a model with the transaction schema and exports it
+const transaction = mongoose.model("Transaction", transactionSchema);
+module.exports = transaction;

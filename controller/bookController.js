@@ -1,15 +1,15 @@
 /*
  * Filename: bookController.js
  * Author: Pallob Poddar
- * Date: September 18, 2023
+ * Date: September 19, 2023
  * Description: This module connects the book model and sends appropriate responses
  */
 
 // Imports necessary modules
 const { validationResult } = require("express-validator");
-const bookModel = require("../model/book");
 const HTTP_STATUS = require("../constants/statusCodes");
 const sendResponse = require("../util/common");
+const bookModel = require("../model/book");
 
 /**
  * Represents a book controller
@@ -41,7 +41,6 @@ class bookController {
 				author,
 				description,
 				price,
-				discountPercentage,
 				stock,
 				language,
 				category,
@@ -70,7 +69,6 @@ class bookController {
 				category: category,
 				isbn: isbn,
 				price: price,
-				discountPercentage: discountPercentage,
 				stock: stock,
 			});
 
@@ -267,7 +265,6 @@ class bookController {
 				author,
 				description,
 				price,
-				discountPercentage,
 				stock,
 				language,
 				category,
@@ -281,7 +278,6 @@ class bookController {
 				!author &&
 				!description &&
 				!price &&
-				!discountPercentage &&
 				!stock &&
 				!language &&
 				!category &&
@@ -305,7 +301,6 @@ class bookController {
 						author: author,
 						description: description,
 						price: price,
-						discountPercentage: discountPercentage,
 						stock: stock,
 						language: language,
 						category: category,

@@ -49,10 +49,6 @@ const bookSchema = new mongoose.Schema(
 			type: Number,
 			required: true,
 		},
-		discountPercentage: {
-			type: Number,
-			required: false,
-		},
 		stock: {
 			type: Number,
 			required: true,

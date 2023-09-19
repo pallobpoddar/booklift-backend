@@ -1,17 +1,19 @@
 const { validationResult } = require("express-validator");
 const { success, failure } = require("../util/common");
-const TransactionModel = require("../model/transaction");
-const CartModel = require("../model/cart");
-const ProductModel = require("../model/book");
+const transactionModel = require("../model/transaction");
+const cartModel = require("../model/cart");
+const bookModel = require("../model/book");
 const HTTP_STATUS = require("../constants/statusCodes");
+const sendResponse = require("../util/common");
 
 class Transaction {
 	async getAll(req, res) {
 		try {
 			let transactions;
-			transactions = await TransactionModel.find({})
+			transactions = await transactionModel
+				.find({})
 				.populate("users")
-				.populate("products.id");
+				.populate("books.id");
 
 			if (transactions.length > 0) {
 				return res.status(HTTP_STATUS.OK).send(
@@ -32,50 +34,64 @@ class Transaction {
 		}
 	}
 
-	async create(req, res) {
+	async add(req, res) {
 		try {
-			const { userId, cartId } = req.body;
-			const cart = await CartModel.findOne({ _id: cartId, user: userId });
+			// If the user provides invalid information, it returns an error
+			const validation = validationResult(req).array();
+			if (validation.length > 0) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.UNPROCESSABLE_ENTITY,
+					"Failed to checkout",
+					validation
+				);
+			}
+
+			const { userId } = req.body;
+			const cart = await cartModel.findOne({ user: userId });
 
 			if (!cart) {
-				return res
-					.status(HTTP_STATUS.NOT_FOUND)
-					.send(failure("Cart was not found for this user"));
+				return sendResponse(
+					res,
+					HTTP_STATUS.NOT_FOUND,
+					"Cart was not found for this user",
+					"Not found"
+				);
 			}
-			const productsList = cart.products.map((element) => {
-				return element.product;
+			const booksList = cart.books.map((element) => {
+				return element.book;
 			});
 
-			const productsInCart = await ProductModel.find({
+			const booksInCart = await bookModel.find({
 				_id: {
-					$in: productsList,
+					$in: booksList,
 				},
 			});
 
-			if (productsList.length !== productsInCart.length) {
-				return res
-					.status(HTTP_STATUS.NOT_FOUND)
-					.send(failure("All products in cart do not exist"));
+			if (booksList.length !== booksInCart.length) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.NOT_FOUND,
+					"All books in cart do not exist"
+				);
 			}
 
-			productsInCart.forEach((product) => {
-				const productFound = cart.products.findIndex(
-					(cartItem) => String(cartItem.product._id) === String(product._id)
+			booksInCart.forEach((book) => {
+				const bookFound = cart.books.findIndex(
+					(cartItem) => String(cartItem.book._id) === String(book._id)
 				);
-				if (product.stock < cart.products[productFound].quantity) {
-					return res
-						.status(HTTP_STATUS.NOT_FOUND)
-						.send(
-							failure(
-								"Unable to check out at this time, product does not exist"
-							)
-						);
+				if (book.stock < cart.books[bookFound].quantity) {
+					return sendResponse(
+						res,
+						HTTP_STATUS.NOT_FOUND,
+						"Unable to check out at this time, book does not exist"
+					);
 				}
-				product.stock -= cart.products[productFound].quantity;
+				book.stock -= cart.books[bookFound].quantity;
 			});
 
 			const bulk = [];
-			productsInCart.map((element) => {
+			booksInCart.map((element) => {
 				bulk.push({
 					updateOne: {
 						filter: { _id: element },
@@ -84,29 +100,35 @@ class Transaction {
 				});
 			});
 
-			const stockSave = await ProductModel.bulkWrite(bulk);
-			const newTransaction = await TransactionModel.create({
-				products: cart.products,
+			const stockSave = await bookModel.bulkWrite(bulk);
+			const newTransaction = await transactionModel.create({
 				user: userId,
+				books: cart.books,
 				total: cart.total,
 			});
 
-			cart.products = [];
+			cart.books = [];
 			cart.total = 0;
 			const cartSave = await cart.save();
 
 			if (cartSave && stockSave && newTransaction) {
-				return res
-					.status(HTTP_STATUS.OK)
-					.send(success("Successfully checked out!", newTransaction));
+				return sendResponse(
+					res,
+					HTTP_STATUS.OK,
+					"Successfully checked out!",
+					newTransaction
+				);
 			}
 
-			return res.status(HTTP_STATUS.OK).send(failure("Something went wrong"));
+			return sendResponse(res, HTTP_STATUS.OK, "Something went wrong");
 		} catch (error) {
 			console.log(error);
-			return res
-				.status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-				.send(failure("Internal server error"));
+			return sendResponse(
+				res,
+				HTTP_STATUS.INTERNAL_SERVER_ERROR,
+				"Internal server error",
+				"Server error"
+			);
 		}
 	}
 }

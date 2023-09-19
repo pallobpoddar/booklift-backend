@@ -1,7 +1,7 @@
 /*
  * Filename: auth.js
  * Author: Pallob Poddar
- * Date: September 15, 2023
+ * Date: September 19, 2023
  * Description: This module defines the auths collection schema
  */
 
@@ -38,11 +38,11 @@ const authSchema = new mongoose.Schema(
 		blockedUntil: {
 			type: Date,
 			required: false,
-		}
+		},
 	},
 	{ timestamps: true }
 );
 
 // Creates a model with the auth schema and exports it
-const Auth = mongoose.model("Auth", authSchema);
-module.exports = Auth;
+const auth = mongoose.model("Auth", authSchema);
+module.exports = auth;

@@ -1,7 +1,7 @@
 /*
  * Filename: cartController.js
  * Author: Pallob Poddar
- * Date: September 18, 2023
+ * Date: September 19, 2023
  * Description: This module connects the cart model and sends appropriate responses
  */
 
@@ -11,11 +11,18 @@ const sendResponse = require("../util/common");
 const cartModel = require("../model/cart");
 const userModel = require("../model/user");
 const bookModel = require("../model/book");
+const discountModel = require("../model/discount");
 const transactionModel = require("../model/transaction");
 const HTTP_STATUS = require("../constants/statusCodes");
 
 class CartController {
-	async add(req, res) {
+	/**
+	 * Create and update function to add items in a cart
+	 * @param {*} req
+	 * @param {*} res
+	 * @returns Response to the client
+	 */
+	async addItems(req, res) {
 		try {
 			// If the user provides invalid information, it returns an error
 			const validation = validationResult(req).array();
@@ -29,7 +36,7 @@ class CartController {
 			}
 
 			// Destructures necessary elements from request body
-			const { userId, productId, quantity } = req.body;
+			const { userId, bookId, quantity } = req.body;
 
 			// If the user is not registered, it returns an error
 			const user = await userModel.findById({ _id: userId });
@@ -43,7 +50,7 @@ class CartController {
 			}
 
 			// If the book is not registered, it returns an error
-			const book = await bookModel.findById({ _id: productId });
+			const book = await bookModel.findById({ _id: bookId });
 			if (!book) {
 				return sendResponse(
 					res,
@@ -53,194 +60,229 @@ class CartController {
 				);
 			}
 
-			// Converts the mongoDB document to a javascript object	and deletes unnecessary fields
+			// Checks if the book has any discount
+			const discount = await discountModel.findOne({ book: bookId });
+
+			// Converts the mongoDB document to a javascript object
 			const bookObject = book.toObject();
-			let cartObject = await cartModel.findById({ user: userId });
+
+			// If user doesn't have an existing cart, it creates one after calculating the total price
+			let cartObject = await cartModel.findOne({ user: userId });
 			if (!cartObject) {
-				const cart = new cartModel({
+				const cart = await cartModel.create({
 					user: userId,
-					products: {
-						book: productId,
+					books: {
+						book: bookId,
 						quantity: quantity,
 					},
-					total: bookObject.price * quantity,
+					total: discount
+						? bookObject.price * quantity -
+						  (bookObject.price * quantity * discount.percentage) / 100
+						: bookObject.price * quantity,
 				});
 
-				await cart
-					.save()
-					.then((data) => {
-						return res
-							.status(HTTP_STATUS.OK)
-							.send(success("Successfully created a cart", data));
-					})
-					.catch((error) => {
-						return res
-							.status(HTTP_STATUS.UNPROCESSABLE_ENTITY)
-							.send(failure("Failed to create a cart"));
-					});
-			} else {
-				let removeFlag = false;
-				let responseFlag = false;
-				cartObject.products.forEach((data) => {
-					const productIdToString = String(data.book);
-					if (productIdToString === productId) {
-						removeFlag = true;
-						if (data.quantity + quantity <= bookObject.stock) {
-							data.quantity = data.quantity + quantity;
-						} else {
-							responseFlag = true;
-						}
+				// Converts the mongoDB document to a javascript object	and deletes unnecessary fields
+				const cartFilteredInfo = cart.toObject();
+				delete cartFilteredInfo._id;
+				delete cartFilteredInfo.createdAt;
+				delete cartFilteredInfo.updatedAt;
+				delete cartFilteredInfo.__v;
+
+				// Returns cart data
+				return sendResponse(
+					res,
+					HTTP_STATUS.OK,
+					"Successfully added the cart",
+					cartFilteredInfo
+				);
+			}
+			// If stock is available, it adds the quantity for that book
+			let removeFlag = false;
+			let responseFlag = false;
+			cartObject.books.forEach((data) => {
+				const bookIdToString = String(data.book);
+				if (bookIdToString === bookId) {
+					removeFlag = true;
+					if (data.quantity + quantity <= bookObject.stock) {
+						data.quantity = data.quantity + quantity;
+					} else {
+						responseFlag = true;
 					}
-				});
-
-				if (responseFlag === true) {
-					return res.status(HTTP_STATUS.OK).send(failure("Not enough stock"));
 				}
-
-				if (removeFlag === false) {
-					const newProduct = {
-						book: productId,
-						quantity: quantity,
-					};
-					cartObject.products.push(newProduct);
-				}
-				cartObject.total = cartObject.total + bookObject.price * quantity;
-				await cartObject
-					.save()
-					.then((data) => {
-						return res
-							.status(HTTP_STATUS.OK)
-							.send(success("Added items to the cart", data));
-					})
-					.catch((error) => {
-						return res
-							.status(HTTP_STATUS.UNPROCESSABLE_ENTITY)
-							.send(failure("Failed to add items to the cart"));
-					});
-			}
-		} catch (error) {
-			return res
-				.status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-				.send(failure("Internal server error"));
-		}
-	}
-
-	async removeItems(req, res) {
-		try {
-			const validation = validationResult(req).array();
-			if (validation.length > 0) {
-				return res
-					.status(HTTP_STATUS.OK)
-					.send(failure("Failed to remove items", validation));
-			}
-
-			const { userId, productId, quantity } = req.body;
-
-			const user = await userModel.findById({ _id: userId });
-			if (!user) {
-				return res
-					.status(HTTP_STATUS.OK)
-					.send(failure("You are not registered"));
-			}
-
-			const book = await bookModel.findById({ _id: productId });
-			if (!book) {
-				return res.status(HTTP_STATUS.OK).send(failure("There's no such book"));
-			}
-			const bookObject = book.toObject();
-			let cartObject = await cartModel.findById({ user: userId });
-			if (!cartObject) {
-				return res
-					.status(HTTP_STATUS.OK)
-					.send(failure("You don't have a cart"));
-			} else {
-				let removeFlag = false;
-				let responseFlag = false;
-				cartObject.products.forEach((data) => {
-					const productIdToString = String(data.book);
-					if (productIdToString === productId) {
-						removeFlag = true;
-						if (data.quantity - quantity >= 0) {
-							data.quantity = data.quantity - quantity;
-						} else {
-							responseFlag = true;
-						}
-					}
-				});
-
-				if (responseFlag === true) {
-					return res
-						.status(HTTP_STATUS.OK)
-						.send(failure("Number of items should be at least 0"));
-				}
-
-				if (removeFlag === false) {
-					return res
-						.status(HTTP_STATUS.OK)
-						.send(failure("You don't have this book in your cart"));
-				}
-
-				cartObject.total = cartObject.total - bookObject.price * quantity;
-				await cartObject
-					.save()
-					.then((data) => {
-						return res
-							.status(HTTP_STATUS.OK)
-							.send(success("Removed items from the cart", data));
-					})
-					.catch((error) => {
-						return res
-							.status(HTTP_STATUS.UNPROCESSABLE_ENTITY)
-							.send(failure("Failed to remove items from the cart"));
-					});
-			}
-		} catch (error) {
-			return res
-				.status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-				.send(failure("Internal server error"));
-		}
-	}
-
-	async checkout(req, res) {
-		try {
-			const validation = validationResult(req).array();
-			if (validation.length > 0) {
-				return res
-					.status(HTTP_STATUS.OK)
-					.send(failure("Failed to checkout", validation));
-			}
-
-			const { cartId } = req.body;
-			const cart = await cartModel.findById({ _id: cartId });
-			if (!cart) {
-				return res.status(HTTP_STATUS.OK).send(failure("There's no such cart"));
-			} else {
-			}
-
-			const cartObject = cart.toObject();
-			const transaction = new transactionModel({
-				cart: cartId,
-				user: cartObject.user,
-				products: cartObject.products,
-				total: cartObject.total,
 			});
 
-			await transaction
-				.save()
-				.then((data) => {
-					return res
-						.status(HTTP_STATUS.OK)
-						.send(success("Successfully created a transaction", data));
-				})
-				.catch((error) => {
-					return res
-						.status(HTTP_STATUS.UNPROCESSABLE_ENTITY)
-						.send(failure("Failed to create a transaction"));
-				});
+			// Otherwise it returns an error
+			if (responseFlag === true) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.EXPECTATION_FAILED,
+					"Not enough stock",
+					"Expectation failed"
+				);
+			}
+
+			// Pushes the book in books array
+			if (removeFlag === false) {
+				const newBook = {
+					book: bookId,
+					quantity: quantity,
+				};
+				cartObject.books.push(newBook);
+			}
+
+			// Calculates the total price and updates the cart document
+			cartObject.total = discount
+				? cartObject.total +
+				  (bookObject.price * quantity -
+						(bookObject.price * quantity * discount.percentage) / 100)
+				: cartObject.total + bookObject.price * quantity;
+			await cartObject.save();
+
+			// Converts the mongoDB document to a javascript object	and deletes unnecessary fields
+			const cartFilteredInfo = cartObject.toObject();
+			delete cartFilteredInfo._id;
+			delete cartFilteredInfo.createdAt;
+			delete cartFilteredInfo.updatedAt;
+			delete cartFilteredInfo.__v;
+
+			// Returns cart data
+			return sendResponse(
+				res,
+				HTTP_STATUS.OK,
+				"Added items to the cart",
+				cartFilteredInfo
+			);
 		} catch (error) {
-			return res
-				.status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
-				.send(failure("Internal server error"));
+			// Returns an error
+			return sendResponse(
+				res,
+				HTTP_STATUS.INTERNAL_SERVER_ERROR,
+				"Internal server error",
+				"Server error"
+			);
+		}
+	}
+
+	/**
+	 * Delete function to remove items from a cart
+	 * @param {*} req
+	 * @param {*} res
+	 * @returns Response to the client
+	 */
+	async removeItems(req, res) {
+		try {
+			// If the user provides invalid information, it returns an error
+			const validation = validationResult(req).array();
+			if (validation.length > 0) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.UNPROCESSABLE_ENTITY,
+					"Failed to remove items",
+					validation
+				);
+			}
+
+			// Destructures necessary elements from request body
+			const { userId, bookId, quantity } = req.body;
+
+			// If the user is not registered, it returns an error
+			const user = await userModel.findById({ _id: userId });
+			if (!user) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.UNAUTHORIZED,
+					"You are not registered",
+					"Unauthorized"
+				);
+			}
+
+			// If the book is not registered, it returns an error
+			const book = await bookModel.findById({ _id: bookId });
+			if (!book) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.NOT_FOUND,
+					"Book is not registered",
+					"Not found"
+				);
+			}
+
+			// Checks if the book has any discount
+			const discount = await discountModel.findOne({ book: bookId });
+
+			// Converts the mongoDB document to a javascript object
+			const bookObject = book.toObject();
+
+			// If no cart is found, it returns an error
+			let cartObject = await cartModel.findOne({ user: userId });
+			if (!cartObject) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.NOT_FOUND,
+					"You don't have a cart",
+					"Not found"
+				);
+			}
+
+			// Otherwise checks if quantity becomes greater than 0 or not
+			let removeFlag = false;
+			let responseFlag = false;
+			cartObject.books.forEach((data) => {
+				const bookIdToString = String(data.book);
+				if (bookIdToString === bookId) {
+					removeFlag = true;
+					if (data.quantity - quantity >= 0) {
+						data.quantity = data.quantity - quantity;
+					} else {
+						responseFlag = true;
+					}
+				}
+			});
+
+			// If quantity becomes 0, it returns an error
+			if (responseFlag === true) {
+				return res
+					.status(HTTP_STATUS.OK)
+					.send(failure("Number of items should be at least 0"));
+			}
+
+			// If user doesn't have this book in the cart, it returns an error
+			if (removeFlag === false) {
+				return res
+					.status(HTTP_STATUS.OK)
+					.send(failure("You don't have this book in your cart"));
+			}
+
+			// Calculates the total price and updates the cart document
+			cartObject.total = discount
+				? cartObject.total -
+				  (bookObject.price * quantity -
+						(bookObject.price * quantity * discount.percentage) / 100)
+				: cartObject.total - bookObject.price * quantity;
+			await cartObject.save();
+
+			// Converts the mongoDB document to a javascript object	and deletes unnecessary fields
+			const cartFilteredInfo = cartObject.toObject();
+			delete cartFilteredInfo._id;
+			delete cartFilteredInfo.createdAt;
+			delete cartFilteredInfo.updatedAt;
+			delete cartFilteredInfo.__v;
+
+			// Returns cart data
+			return sendResponse(
+				res,
+				HTTP_STATUS.OK,
+				"Successfully removed items from the cart",
+				cartFilteredInfo
+			);
+		} catch (error) {
+			// Returns an error
+			return sendResponse(
+				res,
+				HTTP_STATUS.INTERNAL_SERVER_ERROR,
+				"Internal server error",
+				"Server error"
+			);
 		}
 	}
 }

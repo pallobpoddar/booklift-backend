@@ -1,7 +1,7 @@
 /*
  * Filename: app.js
  * Author: Pallob Poddar
- * Date: September 17, 2023
+ * Date: September 19, 2023
  * Description: Root module: it connects the server with the routes and database
  */
 
@@ -15,9 +15,10 @@ const sendResponse = require("./util/common");
 const authRouter = require("./routes/authRoutes");
 const userRouter = require("./routes/userRoutes");
 const bookRouter = require("./routes/bookRoutes");
-const transactionRouter = require("./routes/transaction-routes");
-const cartRouter = require("./routes/cart-routes");
-const reviewRouter = require("./routes/review-routes");
+const discountRouter = require("./routes/discountRoutes");
+const transactionRouter = require("./routes/transactionRoutes");
+const cartRouter = require("./routes/cartRoutes");
+const reviewRouter = require("./routes/reviewRoutes");
 const databaseConnection = require("./config/database");
 
 // Loads environment variables from .env file
@@ -51,6 +52,7 @@ app.use("/api/books", bookRouter);
 app.use("/api/transactions", transactionRouter);
 app.use("/api/carts", cartRouter);
 app.use("/api/reviews", reviewRouter);
+app.use("/api/discounts", discountRouter);
 app.use(async (req, res) => {
 	return sendResponse(
 		res,
