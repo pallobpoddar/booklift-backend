@@ -41,6 +41,26 @@ const reviewValidator = {
 			.isLength({ max: 1000 })
 			.withMessage("Review must be within 1000 characters"),
 	],
+
+	reviewUpdate: [
+		body("rating")
+			.exists()
+			.withMessage("Enter a rating")
+			.bail()
+			.isInt({ min: 1, max: 5 })
+			.withMessage("Rating must be between 1 and 5"),
+		body("review")
+			.optional()
+			.isString()
+			.withMessage("Review must be in words")
+			.bail()
+			.trim()
+			.notEmpty()
+			.withMessage("Review can't be empty")
+			.bail()
+			.isLength({ max: 1000 })
+			.withMessage("Review must be within 1000 characters"),
+	],
 };
 
 // Exports the validator

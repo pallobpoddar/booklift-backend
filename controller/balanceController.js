@@ -37,8 +37,8 @@ class BalanceController {
 			}
 
 			// Destructures necessary elements from request body and params
-            const {id} = req.params;
-			const {balance} = req.body;
+			const { id } = req.params;
+			const { balance } = req.body;
 
 			// If the user is not registered, it returns an error
 			const user = await userModel.findById({ _id: id });
@@ -85,15 +85,71 @@ class BalanceController {
 				);
 			}
 
-            const newBalance = await balanceModel.findOneAndUpdate({user: id}, {balance: balance}, {new: true});
-            return sendResponse(
+			const newBalance = await balanceModel.findOneAndUpdate(
+				{ user: id },
+				{ balance: balance },
+				{ new: true }
+			);
+			return sendResponse(
 				res,
 				HTTP_STATUS.OK,
 				"Successfully updated the balance",
 				newBalance
 			);
 		} catch (error) {
-            console.log(error)
+			// Returns an error
+			return sendResponse(
+				res,
+				HTTP_STATUS.INTERNAL_SERVER_ERROR,
+				"Internal server error",
+				"Server error"
+			);
+		}
+	}
+
+	async updateOneById(req, res) {
+		try {
+			// If the user provides invalid information, it returns an error
+			const validation = validationResult(req).array();
+			if (validation.length > 0) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.UNPROCESSABLE_ENTITY,
+					"Failed to add the balance",
+					validation
+				);
+			}
+
+			// Destructures necessary elements from request body and params
+			const { id } = req.params;
+			const { balance } = req.body;
+
+			// If the user is not registered, it returns an error
+			const user = await userModel.findById({ _id: id });
+			if (!user) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.UNAUTHORIZED,
+					"You are not registered",
+					"Unauthorized"
+				);
+			}
+
+			const balanceObject = await balanceModel.findOne({ user: id });
+			const balanceToObject = balanceObject.toObject();
+			const updatedBalance = await balanceModel.findOneAndUpdate(
+				{ user: id },
+				{ balance: balanceToObject.balance + balance },
+				{ new: true }
+			);
+
+			return sendResponse(
+				res,
+				HTTP_STATUS.OK,
+				"Successfully updated the balance",
+				updatedBalance
+			);
+		} catch (error) {
 			// Returns an error
 			return sendResponse(
 				res,
