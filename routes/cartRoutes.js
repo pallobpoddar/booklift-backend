@@ -10,27 +10,21 @@ const express = require("express");
 const cartRoutes = express();
 const cartValidator = require("../middleware/cartValidation");
 const cartController = require("../controller/cartController");
-const transactionController = require("../controller/transactionController");
 const { isAuthenticated } = require("../middleware/tokenValidation");
 
 // Sets up the routes, invokes corresponding APIs and cart controller methods
 cartRoutes.post(
 	"/add-items",
 	isAuthenticated,
-	cartValidator.cart,
+	cartValidator.cartUpdate,
 	cartController.addItems
 );
+cartRoutes.get("/get-cart/:id", isAuthenticated, cartValidator.cardRetrieve, cartController.getCart);
 cartRoutes.patch(
 	"/remove-items",
 	isAuthenticated,
-	cartValidator.cart,
+	cartValidator.cartUpdate,
 	cartController.removeItems
-);
-cartRoutes.post(
-	"/checkout",
-	isAuthenticated,
-	cartValidator.checkout,
-	transactionController.add
 );
 
 // Exports the cart routes

@@ -8,6 +8,9 @@
 // Imports necessary modules
 const express = require("express");
 const app = express();
+const morgan = require("morgan");
+const fs = require("fs");
+const path = require("path");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const HTTP_STATUS = require("./constants/statusCodes");
@@ -19,7 +22,14 @@ const discountRouter = require("./routes/discountRoutes");
 const transactionRouter = require("./routes/transactionRoutes");
 const cartRouter = require("./routes/cartRoutes");
 const reviewRouter = require("./routes/reviewRoutes");
+const balanceRouter = require("./routes/balanceRoutes")
 const databaseConnection = require("./config/database");
+
+// Creates a write stream to log data
+const accessLogStream = fs.createWriteStream(
+	path.join(__dirname, "logFile.log"),
+	{ flags: "a" }
+  );
 
 // Loads environment variables from .env file
 dotenv.config();
@@ -45,6 +55,9 @@ app.use((err, req, res, next) => {
 	next();
 });
 
+// Configures morgan middleware
+app.use(morgan("combined", { stream: accessLogStream }));
+
 // Sets up the routes; if the user provides any other routes, it returns an error
 app.use("/api/auths", authRouter);
 app.use("/api/users", userRouter);
@@ -53,6 +66,7 @@ app.use("/api/transactions", transactionRouter);
 app.use("/api/carts", cartRouter);
 app.use("/api/reviews", reviewRouter);
 app.use("/api/discounts", discountRouter);
+app.use("/api/balances", balanceRouter);
 app.use(async (req, res) => {
 	return sendResponse(
 		res,

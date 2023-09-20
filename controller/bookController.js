@@ -204,7 +204,7 @@ class bookController {
 			// Retrieves book data, unselects unnecessary fields, set sort, skip and limit criteria according to the user needs.
 			const books = await bookModel
 				.find(filter)
-				.select("-_id -createdAt -updatedAt -__v")
+				.select("-createdAt -updatedAt -__v")
 				.sort({
 					[sortParam]: sortOrder === "asc" ? 1 : -1,
 				})

@@ -6,11 +6,11 @@
  */
 
 // Imports necessary modules
-const { body } = require("express-validator");
+const { body, param } = require("express-validator");
 
-// The cart and checkout array validates the required fields given from request body
+// The cartUpdate array validates the required fields given from request body
 const cartValidator = {
-	cart: [
+	cartUpdate: [
 		body("userId")
 			.exists()
 			.withMessage("User Id must be provided")
@@ -31,14 +31,9 @@ const cartValidator = {
 			.withMessage("Quantity must between 1 and 1000"),
 	],
 
-	checkout: [
-		body("userId")
-			.exists()
-			.withMessage("User ID must be provided")
-			.bail()
-			.isMongoId()
-			.withMessage("User ID is not in valid mongoDB format"),
-	],
+	cardRetrieve: [
+		param("id").optional().isMongoId().withMessage("Enter a valid MongoDB Id"),
+	]
 };
 
 // Exports the validator

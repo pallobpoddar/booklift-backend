@@ -6,10 +6,10 @@
  */
 
 // Imports necessary modules
-const { validationResult } = require("express-validator");
-const sendResponse = require("../util/common");
 const userModel = require("../model/user");
+const sendResponse = require("../util/common");
 const HTTP_STATUS = require("../constants/statusCodes");
+const { validationResult } = require("express-validator");
 
 /**
  * Represents a user controller

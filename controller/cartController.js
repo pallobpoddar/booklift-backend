@@ -8,12 +8,11 @@
 // Imports necessary modules
 const { validationResult } = require("express-validator");
 const sendResponse = require("../util/common");
-const cartModel = require("../model/cart");
+const HTTP_STATUS = require("../constants/statusCodes");
 const userModel = require("../model/user");
 const bookModel = require("../model/book");
 const discountModel = require("../model/discount");
-const transactionModel = require("../model/transaction");
-const HTTP_STATUS = require("../constants/statusCodes");
+const cartModel = require("../model/cart");
 
 class CartController {
 	/**
@@ -77,7 +76,8 @@ class CartController {
 					},
 					total: discount
 						? bookObject.price * quantity -
-						  (bookObject.price * quantity * discount.percentage) / 100
+						  (bookObject.price * quantity * discount.percentage) /
+								100
 						: bookObject.price * quantity,
 				});
 
@@ -96,6 +96,7 @@ class CartController {
 					cartFilteredInfo
 				);
 			}
+
 			// If stock is available, it adds the quantity for that book
 			let removeFlag = false;
 			let responseFlag = false;
@@ -134,7 +135,8 @@ class CartController {
 			cartObject.total = discount
 				? cartObject.total +
 				  (bookObject.price * quantity -
-						(bookObject.price * quantity * discount.percentage) / 100)
+						(bookObject.price * quantity * discount.percentage) /
+							100)
 				: cartObject.total + bookObject.price * quantity;
 			await cartObject.save();
 
@@ -151,6 +153,73 @@ class CartController {
 				HTTP_STATUS.OK,
 				"Added items to the cart",
 				cartFilteredInfo
+			);
+		} catch (error) {
+			// Returns an error
+			return sendResponse(
+				res,
+				HTTP_STATUS.INTERNAL_SERVER_ERROR,
+				"Internal server error",
+				"Server error"
+			);
+		}
+	}
+
+	/**
+	 * Retrieve function to get the cart's data
+	 * @param {*} req
+	 * @param {*} res
+	 * @returns Response to the client
+	 */
+	async getCart(req, res) {
+		try {
+			// If the user provides invalid information, it returns an error
+			const validation = validationResult(req).array();
+			if (validation.length > 0) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.UNPROCESSABLE_ENTITY,
+					"Failed to get the cart",
+					validation
+				);
+			}
+
+			// Destructures user id from request params
+			const { id } = req.params;
+
+			// If the user is not registered, it returns an error
+			const user = await userModel.findById({ _id: id });
+			if (!user) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.NOT_FOUND,
+					"User does not exist",
+					"Not found"
+				);
+			}
+
+			// Retrieves cart data and unselects unnecessary fields
+			const cart = await cartModel
+				.findOne({ user: id })
+				.populate("books.book", "-createdAt -updatedAt -__v")
+				.select("-createdAt -updatedAt -__v");
+
+			// If the cart is not registered, it returns an error
+			if (!cart) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.NOT_FOUND,
+					"Cart does not exist for user",
+					"Not found"
+				);
+			}
+
+			// Otherwise returns the cart data
+			return sendResponse(
+				res,
+				HTTP_STATUS.OK,
+				"Successfully got cart for user",
+				cart
 			);
 		} catch (error) {
 			// Returns an error
@@ -257,7 +326,8 @@ class CartController {
 			cartObject.total = discount
 				? cartObject.total -
 				  (bookObject.price * quantity -
-						(bookObject.price * quantity * discount.percentage) / 100)
+						(bookObject.price * quantity * discount.percentage) /
+							100)
 				: cartObject.total - bookObject.price * quantity;
 			await cartObject.save();
 
@@ -287,4 +357,5 @@ class CartController {
 	}
 }
 
+// Exports the cart controller
 module.exports = new CartController();

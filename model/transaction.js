@@ -21,7 +21,7 @@ const transactionSchema = new mongoose.Schema(
 				{
 					book: {
 						type: mongoose.Types.ObjectId,
-						ref: "Product",
+						ref: "Book",
 						required: true,
 					},
 					quantity: Number,
@@ -32,6 +32,11 @@ const transactionSchema = new mongoose.Schema(
 		total: {
 			type: Number,
 			required: true,
+		},
+		paymentMethod: {
+			type: String,
+			required: true,
+			default: "online",
 		},
 	},
 	{ timestamps: true }
