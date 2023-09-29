@@ -22,14 +22,14 @@ const discountRouter = require("./routes/discountRoutes");
 const transactionRouter = require("./routes/transactionRoutes");
 const cartRouter = require("./routes/cartRoutes");
 const reviewRouter = require("./routes/reviewRoutes");
-const balanceRouter = require("./routes/balanceRoutes")
+const balanceRouter = require("./routes/balanceRoutes");
 const databaseConnection = require("./config/database");
 
 // Creates a write stream to log data
 const accessLogStream = fs.createWriteStream(
 	path.join(__dirname, "logFile.log"),
 	{ flags: "a" }
-  );
+);
 
 // Loads environment variables from .env file
 dotenv.config();
