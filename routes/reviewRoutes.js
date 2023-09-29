@@ -20,5 +20,12 @@ reviewRoutes.post(
 	reviewController.add
 );
 
+reviewRoutes.patch(
+	"/edit",
+	isAuthenticated,
+	reviewValidator.reviewUpdate,
+	reviewController.updateOneById
+);
+
 // Exports the review routes
 module.exports = reviewRoutes;

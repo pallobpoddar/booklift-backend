@@ -76,8 +76,7 @@ class CartController {
 					},
 					total: discount
 						? bookObject.price * quantity -
-						  (bookObject.price * quantity * discount.percentage) /
-								100
+						  (bookObject.price * quantity * discount.percentage) / 100
 						: bookObject.price * quantity,
 				});
 
@@ -135,8 +134,7 @@ class CartController {
 			cartObject.total = discount
 				? cartObject.total +
 				  (bookObject.price * quantity -
-						(bookObject.price * quantity * discount.percentage) /
-							100)
+						(bookObject.price * quantity * discount.percentage) / 100)
 				: cartObject.total + bookObject.price * quantity;
 			await cartObject.save();
 
@@ -326,8 +324,7 @@ class CartController {
 			cartObject.total = discount
 				? cartObject.total -
 				  (bookObject.price * quantity -
-						(bookObject.price * quantity * discount.percentage) /
-							100)
+						(bookObject.price * quantity * discount.percentage) / 100)
 				: cartObject.total - bookObject.price * quantity;
 			await cartObject.save();
 

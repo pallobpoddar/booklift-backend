@@ -94,6 +94,53 @@ class ReviewController {
 			);
 		}
 	}
+
+	async updateOneById(req, res) {
+		try {
+			// If the user provides invalid information, it returns an error
+			const validation = validationResult(req).array();
+			if (validation.length > 0) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.UNPROCESSABLE_ENTITY,
+					"Failed to edit a review",
+					validation
+				);
+			}
+
+			// Destructures necessary elements from request body
+			const { reviewId, rating, review } = req.body;
+
+			const updatedReview = await reviewModel.findByIdAndUpdate(
+				{ _id: reviewId },
+				{ rating: rating, review: review },
+				{ new: true }
+			);
+
+			// Converts the mongoDB document to a javascript object	and deletes unnecessary fields
+			const reviewFilteredInfo = updatedReview.toObject();
+			delete reviewFilteredInfo._id;
+			delete reviewFilteredInfo.createdAt;
+			delete reviewFilteredInfo.updatedAt;
+			delete reviewFilteredInfo.__v;
+
+			// Returns book data
+			return sendResponse(
+				res,
+				HTTP_STATUS.OK,
+				"Successfully updated the review",
+				reviewFilteredInfo
+			);
+		} catch (error) {
+			// Returns an error
+			return sendResponse(
+				res,
+				HTTP_STATUS.INTERNAL_SERVER_ERROR,
+				"Internal server error",
+				"Server error"
+			);
+		}
+	}
 }
 
 // Exports the review controller
