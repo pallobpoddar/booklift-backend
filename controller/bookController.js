@@ -25,16 +25,17 @@ class bookController {
 	async add(req, res) {
 		try {
 			// If the user provides invalid information, it returns an error
-			const validation = validationResult(req).array();
-			if (validation.length > 0) {
-				return sendResponse(
-					res,
-					HTTP_STATUS.UNPROCESSABLE_ENTITY,
-					"Failed to add the book",
-					validation
-				);
-			}
+			// const validation = validationResult(req).array();
+			// if (validation.length > 0) {
+			// 	return sendResponse(
+			// 		res,
+			// 		HTTP_STATUS.UNPROCESSABLE_ENTITY,
+			// 		"Failed to add the book",
+			// 		validation
+			// 	);
+			// }
 
+			const object = JSON.parse(req.body);
 			// Destructures necessary elements from request body
 			const {
 				title,
@@ -46,18 +47,18 @@ class bookController {
 				category,
 				year,
 				isbn,
-			} = req.body;
+			} = object;
 
 			// If the book is already registered, it returns an error
-			const bookRegistered = await bookModel.findOne({ isbn: isbn });
-			if (bookRegistered) {
-				return sendResponse(
-					res,
-					HTTP_STATUS.CONFLICT,
-					"Book already exists",
-					"Conflict"
-				);
-			}
+			// const bookRegistered = await bookModel.findOne({ isbn: isbn });
+			// if (bookRegistered) {
+			// 	return sendResponse(
+			// 		res,
+			// 		HTTP_STATUS.CONFLICT,
+			// 		"Book already exists",
+			// 		"Conflict"
+			// 	);
+			// }
 
 			// Creates a book document
 			const book = await bookModel.create({
@@ -248,19 +249,20 @@ class bookController {
 	async updateOneByID(req, res) {
 		try {
 			// If the book provides invalid information, it returns an error
-			const validation = validationResult(req).array();
-			if (validation.length > 0) {
-				return sendResponse(
-					res,
-					HTTP_STATUS.UNPROCESSABLE_ENTITY,
-					"Failed to update the book",
-					validation
-				);
-			}
+			// const validation = validationResult(req).array();
+			// if (validation.length > 0) {
+			// 	return sendResponse(
+			// 		res,
+			// 		HTTP_STATUS.UNPROCESSABLE_ENTITY,
+			// 		"Failed to update the book",
+			// 		validation
+			// 	);
+			// }
 
+			const object = JSON.parse(req.body);
 			// Destructures necessary elements from request parameter and body
-			const { id } = req.params;
 			const {
+				id,
 				title,
 				author,
 				description,
@@ -270,7 +272,7 @@ class bookController {
 				category,
 				year,
 				isbn,
-			} = req.body;
+			} = object;
 
 			// If nothing was selected, it returns an error
 			if (
@@ -350,18 +352,19 @@ class bookController {
 	async deleteOneByID(req, res) {
 		try {
 			// If the book provides invalid information, it returns an error
-			const validation = validationResult(req).array();
-			if (validation.length > 0) {
-				return sendResponse(
-					res,
-					HTTP_STATUS.UNPROCESSABLE_ENTITY,
-					"Failed to delete the book",
-					validation
-				);
-			}
+			// const validation = validationResult(req).array();
+			// if (validation.length > 0) {
+			// 	return sendResponse(
+			// 		res,
+			// 		HTTP_STATUS.UNPROCESSABLE_ENTITY,
+			// 		"Failed to delete the book",
+			// 		validation
+			// 	);
+			// }
 
+			const object = JSON.parse(req.body);
 			// Destructures id from request parameter and deletes book data
-			const { id } = req.params;
+			const { id } = object;
 			const book = await bookModel.findByIdAndDelete({ _id: id });
 
 			// If no book is found, it returns an error

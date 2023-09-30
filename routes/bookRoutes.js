@@ -18,29 +18,29 @@ const {
 // Sets up the routes, invokes corresponding APIs and book controller methods
 bookRoutes.post(
 	"/add",
-	isAuthenticated,
-	isAuthorized,
-	bookValidator.bookAdd,
+	// isAuthenticated,
+	// isAuthorized,
+	// bookValidator.bookAdd,
 	bookController.add
 );
 bookRoutes.get(
 	"/all",
-	isAuthenticated,
+	// isAuthenticated,
 	bookValidator.commonValidation,
 	bookController.getAll
 );
 bookRoutes.patch(
-	"/update-one-by-id/:id",
-	isAuthenticated,
-	isAuthorized,
-	bookValidator.commonValidation,
+	"/update-one-by-id",
+	// isAuthenticated,
+	// isAuthorized,
+	// bookValidator.commonValidation,
 	bookController.updateOneByID
 );
 bookRoutes.delete(
-	"/delete-one-by-id/:id",
-	isAuthenticated,
-	isAuthorized,
-	bookValidator.commonValidation,
+	"/delete-one-by-id",
+	// isAuthenticated,
+	// isAuthorized,
+	// bookValidator.commonValidation,
 	bookController.deleteOneByID
 );
 
