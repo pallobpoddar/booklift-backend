@@ -35,7 +35,6 @@ class bookController {
 			// 	);
 			// }
 
-			const object = JSON.parse(req.body);
 			// Destructures necessary elements from request body
 			const {
 				title,
@@ -47,7 +46,7 @@ class bookController {
 				category,
 				year,
 				isbn,
-			} = object;
+			} = req.body;
 
 			// If the book is already registered, it returns an error
 			// const bookRegistered = await bookModel.findOne({ isbn: isbn });
@@ -107,15 +106,15 @@ class bookController {
 	async getAll(req, res) {
 		try {
 			// If the user provides invalid information, it returns an error
-			const validation = validationResult(req).array();
-			if (validation.length > 0) {
-				return sendResponse(
-					res,
-					HTTP_STATUS.UNPROCESSABLE_ENTITY,
-					"Failed to add the book",
-					validation
-				);
-			}
+			// const validation = validationResult(req).array();
+			// if (validation.length > 0) {
+			// 	return sendResponse(
+			// 		res,
+			// 		HTTP_STATUS.UNPROCESSABLE_ENTITY,
+			// 		"Failed to add the book",
+			// 		validation
+			// 	);
+			// }
 
 			// Destructures necessary elements from request query
 			let {

@@ -117,15 +117,15 @@ class AuthController {
 	async login(req, res) {
 		try {
 			// If the user provides invalid information, it returns an error
-			const validation = validationResult(req).array();
-			if (validation.length > 0) {
-				return sendResponse(
-					res,
-					HTTP_STATUS.UNPROCESSABLE_ENTITY,
-					"Failed to log in",
-					validation
-				);
-			}
+			// const validation = validationResult(req).array();
+			// if (validation.length > 0) {
+			// 	return sendResponse(
+			// 		res,
+			// 		HTTP_STATUS.UNPROCESSABLE_ENTITY,
+			// 		"Failed to log in",
+			// 		validation
+			// 	);
+			// }
 
 			// Destructures necessary elements from request body
 			const { email, password } = req.body;
