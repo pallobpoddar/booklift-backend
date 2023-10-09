@@ -75,8 +75,24 @@ const authValidator = {
 	],
 
 	login: [
-		body("email").exists().withMessage("Enter your email"),
-		body("password").exists().withMessage("Enter your password"),
+		body("email")
+			.exists()
+			.withMessage("Email is required")
+			.bail()
+			.isEmail()
+			.withMessage("Incorrect email or password"),
+		body("password")
+			.exists()
+			.withMessage("Password is required")
+			.bail()
+			.isStrongPassword({
+				minLength: 8,
+				minLowercase: 1,
+				minUppercase: 1,
+				minSymbols: 1,
+				minNumbers: 1,
+			})
+			.withMessage("Incorrect email or password"),
 	],
 };
 
