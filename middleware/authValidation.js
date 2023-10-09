@@ -13,13 +13,13 @@ const authValidator = {
 	signup: [
 		body("email")
 			.exists()
-			.withMessage("Enter your email")
+			.withMessage("Email is required")
 			.bail()
 			.isEmail()
 			.withMessage("Email is not valid"),
 		body("password")
 			.exists()
-			.withMessage("Enter your password")
+			.withMessage("Password is required")
 			.bail()
 			.isStrongPassword({
 				minLength: 8,
@@ -29,7 +29,7 @@ const authValidator = {
 				minNumbers: 1,
 			})
 			.withMessage(
-				"Password must be at least 8 characters with a lower and upper case letter, symbol and number"
+				"Password must be at least 8 characters long with a lower and upper case letter, symbol and number"
 			),
 		body("confirmPassword")
 			.exists()
