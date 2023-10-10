@@ -7,10 +7,10 @@
 
 /**
  * Response function to send the response
- * @param {*} res 
- * @param {*} status 
- * @param {*} message 
- * @param {*} result 
+ * @param {*} res
+ * @param {*} status
+ * @param {*} message
+ * @param {*} result
  */
 const sendResponse = (res, status, message, result = null) => {
 	const response = {};
@@ -19,7 +19,7 @@ const sendResponse = (res, status, message, result = null) => {
 	if (status >= 400) {
 		response.success = false;
 		response.message = "Internal server error";
-		response.error = result;
+		response.errors = result;
 	} else {
 		// Else returns the data
 		response.success = true;
