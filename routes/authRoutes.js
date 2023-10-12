@@ -12,7 +12,7 @@ const authValidator = require("../middleware/authValidation");
 const authController = require("../controller/authController");
 
 // Sets up the routes, invokes corresponding APIs and authentication controller methods
-authRoutes.post("/signup", authController.signup);
+authRoutes.post("/signup", authValidator.signup, authController.signup);
 authRoutes.post("/login", authValidator.login, authController.login);
 
 // Exports the authentication routes

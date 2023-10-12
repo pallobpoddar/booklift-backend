@@ -26,18 +26,17 @@ class AuthController {
 	 * @returns Response to the client
 	 */
 	async signup(req, res) {
-		console.log(req.body);
 		try {
 			// If the user provides invalid information, it returns an error
-			// const validation = validationResult(req).array();
-			// if (validation.length > 0) {
-			// 	return sendResponse(
-			// 		res,
-			// 		HTTP_STATUS.UNPROCESSABLE_ENTITY,
-			// 		"Failed to sign up",
-			// 		validation
-			// 	);
-			// }
+			const validation = validationResult(req).array();
+			if (validation.length > 0) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.UNPROCESSABLE_ENTITY,
+					"Failed to sign up",
+					validation
+				);
+			}
 
 			// Destructures necessary elements from request body
 			const { email, password, name, phone, birthday, gender } = req.body;
@@ -62,11 +61,9 @@ class AuthController {
 			}
 
 			// Hashes the password
-			const hashedPassword = await bcrypt
-				.hash(password, 10)
-				.then((hash) => {
-					return hash;
-				});
+			const hashedPassword = await bcrypt.hash(password, 10).then((hash) => {
+				return hash;
+			});
 
 			// Creates a user document
 			const user = await userModel.create({
@@ -180,10 +177,7 @@ class AuthController {
 				/* If passwords match, it checks whether or not the blocked duration is over
 				 * If it's over, it assigns failedAttempts and blockedUntil to 0 and null respectively
 				 */
-				if (
-					auth.blockedUntil &&
-					auth.blockedUntil <= new Date(Date.now())
-				) {
+				if (auth.blockedUntil && auth.blockedUntil <= new Date(Date.now())) {
 					auth.failedAttempts = 0;
 					auth.blockedUntil = null;
 					auth.save();
@@ -207,13 +201,9 @@ class AuthController {
 				delete responseAuth.blockedUntil;
 
 				// Generates a jwt with an expiry time of 1 hour
-				const jwt = jsonwebtoken.sign(
-					responseAuth,
-					process.env.SECRET_KEY,
-					{
-						expiresIn: "1h",
-					}
-				);
+				const jwt = jsonwebtoken.sign(responseAuth, process.env.SECRET_KEY, {
+					expiresIn: "1h",
+				});
 
 				// Includes jwt to the javascript object and deletes unnecessary fields
 				responseAuth.token = jwt;
