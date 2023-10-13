@@ -30,17 +30,17 @@ bookRoutes.get(
 	bookController.getAll
 );
 bookRoutes.patch(
-	"/update-one-by-id",
+	"/update-one-by-id/:id",
 	// isAuthenticated,
 	// isAuthorized,
-	// bookValidator.commonValidation,
+	bookValidator.commonValidation,
 	bookController.updateOneByID
 );
 bookRoutes.delete(
-	"/delete-one-by-id",
+	"/delete-one-by-id/:id",
 	// isAuthenticated,
 	// isAuthorized,
-	// bookValidator.commonValidation,
+	bookValidator.commonValidation,
 	bookController.deleteOneByID
 );
 
