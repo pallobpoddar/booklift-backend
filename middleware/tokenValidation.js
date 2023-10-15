@@ -1,12 +1,12 @@
 /*
  * Filename: tokenValidation.js
  * Author: Pallob Poddar
- * Date: September 16, 2023
+ * Date: October 15, 2023
  * Description: This module is a middleware which authenticates and authorizes the token
  */
 
 // Imports necessary modules
-const sendResponse = require("../util/common");
+const sendResponse = require("../util/commonResponse");
 const HTTP_STATUS = require("../constants/statusCodes");
 const jsonwebtoken = require("jsonwebtoken");
 
@@ -78,7 +78,7 @@ const isAuthorized = (req, res, next) => {
 		const user = jsonwebtoken.decode(jwt);
 
 		// If user is not an admin, it returns an error
-		if (user.role !== 1) {
+		if (user.isAdmin !== true) {
 			return sendResponse(
 				res,
 				HTTP_STATUS.UNAUTHORIZED,

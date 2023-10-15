@@ -25,10 +25,9 @@ const authSchema = new mongoose.Schema(
 			ref: "User",
 			required: true,
 		},
-		role: {
-			type: Number,
+		isAdmin: {
+			type: Boolean,
 			required: false,
-			default: 2,
 		},
 		failedAttempts: {
 			type: Number,

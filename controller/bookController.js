@@ -8,7 +8,7 @@
 // Imports necessary modules
 const { validationResult } = require("express-validator");
 const HTTP_STATUS = require("../constants/statusCodes");
-const sendResponse = require("../util/common");
+const sendResponse = require("../util/commonResponse");
 const bookModel = require("../model/book");
 
 /**
@@ -222,12 +222,17 @@ class bookController {
 			}
 
 			// Otherwise returns count per page, page, limit and book data as response
-			return sendResponse(res, HTTP_STATUS.OK, "Successfully got all books", {
-				countPerPage: books.length,
-				page: parseInt(page),
-				limit: parseInt(limit),
-				books: books,
-			});
+			return sendResponse(
+				res,
+				HTTP_STATUS.OK,
+				"Successfully got all books",
+				{
+					countPerPage: books.length,
+					page: parseInt(page),
+					limit: parseInt(limit),
+					books: books,
+				}
+			);
 		} catch (error) {
 			// Returns an error
 			return sendResponse(

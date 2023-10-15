@@ -1,13 +1,13 @@
 /*
  * Filename: userController.js
  * Author: Pallob Poddar
- * Date: September 16, 2023
+ * Date: October 15, 2023
  * Description: This module connects the user model and sends appropriate responses
  */
 
 // Imports necessary modules
 const userModel = require("../model/user");
-const sendResponse = require("../util/common");
+const sendResponse = require("../util/commonResponse");
 const HTTP_STATUS = require("../constants/statusCodes");
 const { validationResult } = require("express-validator");
 
@@ -27,7 +27,7 @@ class UserController {
 			// Retrieves all users' data after unselecting unnecessary fields
 			const users = await userModel
 				.find({})
-				.select("-_id -createdAt -updatedAt -__v");
+				.select("-createdAt -updatedAt -__v");
 
 			// If no user is found, it returns a response
 			if (users.length === 0) {

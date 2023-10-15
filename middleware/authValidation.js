@@ -1,39 +1,55 @@
 /*
  * Filename: authValidation.js
  * Author: Pallob Poddar
- * Date: September 16, 2023
- * Description: This module is a middleware which authenticates the signup and login credentials
+ * Date: October 14, 2023
+ * Description: This module is a middleware which authenticates the signup and signin credentials
  */
 
 // Imports necessary modules
 const { body } = require("express-validator");
 
-// The signup and login array validates the required fields given from request body
+/**
+ * Validator function to validate email
+ * @param {*} message
+ * @returns email validation
+ */
+const validateEmail = (message) => {
+	return body("email")
+		.exists()
+		.withMessage("Email is required")
+		.bail()
+		.isEmail()
+		.withMessage(message);
+};
+
+/**
+ * Validator function to validate password
+ * @param {*} message
+ * @returns password validation
+ */
+const validatePassword = (message) => {
+	return body("password")
+		.exists()
+		.withMessage("Password is required")
+		.bail()
+		.isStrongPassword({
+			minLength: 8,
+			minLowercase: 1,
+			minUppercase: 1,
+			minSymbols: 1,
+			minNumbers: 1,
+		})
+		.withMessage(message);
+};
+
+// Signup and signin array validate the required fields given from request body
 const authValidator = {
 	signup: [
-		body("email")
-			.exists()
-			.withMessage("Email is required")
-			.bail()
-			.isEmail()
-			.withMessage("Email is not valid"),
-		body("password")
-			.exists()
-			.withMessage("Password is required")
-			.bail()
-			.isStrongPassword({
-				minLength: 8,
-				minLowercase: 1,
-				minUppercase: 1,
-				minSymbols: 1,
-				minNumbers: 1,
-			})
-			.withMessage(
-				"Password must be at least 8 characters long with a lower and upper case letter, symbol and number"
-			),
+		validateEmail("Invalid email"),
+		validatePassword("Invalid password"),
 		body("confirmPassword")
 			.exists()
-			.withMessage("Confirm your password")
+			.withMessage("Confirm password is required")
 			.bail()
 			.custom((value, { req }) => {
 				if (value !== req.body.password) {
@@ -43,56 +59,36 @@ const authValidator = {
 			}),
 		body("name")
 			.exists()
-			.withMessage("Enter your name")
+			.withMessage("Name is required")
 			.bail()
 			.isString()
-			.withMessage("Name can't consist any number")
+			.withMessage("Invalid name")
 			.bail()
 			.trim()
 			.notEmpty()
-			.withMessage("Name can't be empty")
+			.withMessage("Name is required")
 			.bail()
-			.isLength({ max: 30 })
-			.withMessage("Name must be within 30 characters"),
+			.isLength({ max: 50 })
+			.withMessage("Character limit exceeded"),
 		body("phone")
 			.exists()
-			.withMessage("Enter your phone number")
+			.withMessage("Phone number is required")
 			.bail()
 			.isMobilePhone("bn-BD")
-			.withMessage("Phone number is not valid"),
-		body("birthday")
+			.withMessage("Invalid phone number"),
+		body("dateOfBirth")
 			.optional()
-			.isString()
-			.withMessage("Enter a date of birth in this format, 'mm-dd-yyyy'")
-			.bail()
-			.trim()
-			.isLength(10)
-			.withMessage("Enter a date of birth in this format, 'mm-dd-yyyy'"),
+			.isISO8601()
+			.withMessage("Invalid date of birth"),
 		body("gender")
 			.optional()
 			.isIn(["Male", "Female", "Non-binary"])
 			.withMessage("Gender can be Male, Female or Non-binary"),
 	],
 
-	login: [
-		body("email")
-			.exists()
-			.withMessage("Email is required")
-			.bail()
-			.isEmail()
-			.withMessage("Incorrect email or password"),
-		body("password")
-			.exists()
-			.withMessage("Password is required")
-			.bail()
-			.isStrongPassword({
-				minLength: 8,
-				minLowercase: 1,
-				minUppercase: 1,
-				minSymbols: 1,
-				minNumbers: 1,
-			})
-			.withMessage("Incorrect email or password"),
+	signin: [
+		validateEmail("Incorrect email or password"),
+		validatePassword("Incorrect email or password"),
 	],
 };
 

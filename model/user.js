@@ -28,10 +28,9 @@ const userSchema = new mongoose.Schema(
 			unique: true,
 			maxLength: 14,
 		},
-		birthday: {
-			type: String,
+		dateOfBirth: {
+			type: Date,
 			required: false,
-			maxLength: 10,
 		},
 		gender: {
 			type: String,

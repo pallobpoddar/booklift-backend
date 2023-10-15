@@ -7,7 +7,7 @@
 
 // Imports necessary modules
 const { validationResult } = require("express-validator");
-const sendResponse = require("../util/common");
+const sendResponse = require("../util/commonResponse");
 const HTTP_STATUS = require("../constants/statusCodes");
 const userModel = require("../model/user");
 const bookModel = require("../model/book");
@@ -76,7 +76,8 @@ class CartController {
 					},
 					total: discount
 						? bookObject.price * quantity -
-						  (bookObject.price * quantity * discount.percentage) / 100
+						  (bookObject.price * quantity * discount.percentage) /
+								100
 						: bookObject.price * quantity,
 				});
 
@@ -134,7 +135,8 @@ class CartController {
 			cartObject.total = discount
 				? cartObject.total +
 				  (bookObject.price * quantity -
-						(bookObject.price * quantity * discount.percentage) / 100)
+						(bookObject.price * quantity * discount.percentage) /
+							100)
 				: cartObject.total + bookObject.price * quantity;
 			await cartObject.save();
 
@@ -324,7 +326,8 @@ class CartController {
 			cartObject.total = discount
 				? cartObject.total -
 				  (bookObject.price * quantity -
-						(bookObject.price * quantity * discount.percentage) / 100)
+						(bookObject.price * quantity * discount.percentage) /
+							100)
 				: cartObject.total - bookObject.price * quantity;
 			await cartObject.save();
 

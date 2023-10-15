@@ -1,16 +1,17 @@
 /*
  * Filename: authController.js
  * Author: Pallob Poddar
- * Date: September 16, 2023
+ * Date: October 14, 2023
  * Description: This module connects the user and auth model and sends appropriate responses
  */
 
 // Imports necessary modules
 const { validationResult } = require("express-validator");
-const sendResponse = require("../util/common");
+const sendResponse = require("../util/commonResponse");
 const HTTP_STATUS = require("../constants/statusCodes");
 const userModel = require("../model/user");
 const authModel = require("../model/auth");
+const { deleteStatements } = require("../util/commonFunctions");
 const bcrypt = require("bcrypt");
 const jsonwebtoken = require("jsonwebtoken");
 
@@ -23,10 +24,32 @@ class AuthController {
 	 * Signup function for users
 	 * @param {*} req
 	 * @param {*} res
-	 * @returns Response to the client
+	 * @returns response to the client
 	 */
 	async signup(req, res) {
 		try {
+			// If the user provides invalid properties, it returns an error
+			const allowedProperties = [
+				"email",
+				"password",
+				"confirmPassword",
+				"name",
+				"phone",
+				"dateOfBirth",
+				"gender",
+			];
+			const unexpectedProps = Object.keys(req.body).filter(
+				(key) => !allowedProperties.includes(key)
+			);
+			if (unexpectedProps.length > 0) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.UNPROCESSABLE_ENTITY,
+					"Failed to sign up",
+					`Unexpected properties: ${unexpectedProps.join(", ")}`
+				);
+			}
+
 			// If the user provides invalid information, it returns an error
 			const validation = validationResult(req).array();
 			if (validation.length > 0) {
@@ -39,47 +62,47 @@ class AuthController {
 			}
 
 			// Destructures necessary elements from request body
-			const { email, password, name, phone, birthday, gender } = req.body;
+			const { email, password, name, phone, dateOfBirth, gender } =
+				req.body;
 
 			// If the user is already registered, it returns an error
-			const emailRegistered = await userModel.findOne({ email: email });
-			const phoneRegistered = await userModel.findOne({ phone: phone });
-			if (emailRegistered) {
+			const isEmailRegistered = await userModel.findOne({ email: email });
+			const isPhoneRegistered = await userModel.findOne({ phone: phone });
+			if (isEmailRegistered) {
 				return sendResponse(
 					res,
 					HTTP_STATUS.CONFLICT,
-					"Email already exists",
-					"Conflict"
-				);
-			} else if (phoneRegistered) {
-				return sendResponse(
-					res,
-					HTTP_STATUS.CONFLICT,
-					"Phone number already exists",
+					"Email is already registered",
 					"Conflict"
 				);
 			}
-
-			// Hashes the password
-			const hashedPassword = await bcrypt.hash(password, 10).then((hash) => {
-				return hash;
-			});
+			if (isPhoneRegistered) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.CONFLICT,
+					"Phone number is already registered",
+					"Conflict"
+				);
+			}
 
 			// Creates a user document
 			const user = await userModel.create({
 				name: name,
 				email: email,
 				phone: phone,
-				birthday: birthday,
+				dateOfBirth: dateOfBirth,
 				gender: gender,
 			});
 
 			// Converts the mongoDB document to a javascript object	and deletes unnecessary fields
-			const userFilteredInfo = user.toObject();
-			delete userFilteredInfo._id;
-			delete userFilteredInfo.createdAt;
-			delete userFilteredInfo.updatedAt;
-			delete userFilteredInfo.__v;
+			const userFilteredInfo = deleteStatements(user);
+
+			// Hashes the password
+			const hashedPassword = await bcrypt
+				.hash(password, 10)
+				.then((hash) => {
+					return hash;
+				});
 
 			// Creates an auth document and returns user data
 			await authModel
@@ -88,7 +111,7 @@ class AuthController {
 					password: hashedPassword,
 					user: user._id,
 				})
-				.then((data) => {
+				.then(() => {
 					return sendResponse(
 						res,
 						HTTP_STATUS.OK,
@@ -108,20 +131,34 @@ class AuthController {
 	}
 
 	/**
-	 * Login function for users and admins
+	 * Signin function for users and admins
 	 * @param {*} req
 	 * @param {*} res
-	 * @returns Response to the client
+	 * @returns response to the client
 	 */
-	async login(req, res) {
+	async signin(req, res) {
 		try {
+			// If the user provides invalid properties, it returns an error
+			const allowedProperties = ["email", "password"];
+			const unexpectedProps = Object.keys(req.body).filter(
+				(key) => !allowedProperties.includes(key)
+			);
+			if (unexpectedProps.length > 0) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.UNPROCESSABLE_ENTITY,
+					"Failed to sign in",
+					`Unexpected properties: ${unexpectedProps.join(", ")}`
+				);
+			}
+
 			// If the user provides invalid information, it returns an error
 			const validation = validationResult(req).array();
 			if (validation.length > 0) {
 				return sendResponse(
 					res,
 					HTTP_STATUS.UNPROCESSABLE_ENTITY,
-					"Failed to log in",
+					"Failed to sign in",
 					validation
 				);
 			}
@@ -132,15 +169,15 @@ class AuthController {
 			// Populates user data from auth model and discards unnecessary fields
 			const auth = await authModel
 				.findOne({ email: email })
-				.populate("user", "-_id -email -createdAt -updatedAt -__v")
-				.select("-_id -createdAt -updatedAt -__v");
+				.populate("user", "-createdAt -updatedAt -__v")
+				.select("-email -createdAt -updatedAt -__v");
 
 			// If the user is not registered, it returns an error
 			if (!auth) {
 				return sendResponse(
 					res,
 					HTTP_STATUS.UNAUTHORIZED,
-					"You are not registered",
+					"User is not registered",
 					"Unauthorized"
 				);
 			}
@@ -170,14 +207,17 @@ class AuthController {
 				return sendResponse(
 					res,
 					HTTP_STATUS.FORBIDDEN,
-					"Your login access has been blocked for an hour",
+					"Your signin access has been blocked for an hour",
 					"Forbidden"
 				);
 			} else {
 				/* If passwords match, it checks whether or not the blocked duration is over
 				 * If it's over, it assigns failedAttempts and blockedUntil to 0 and null respectively
 				 */
-				if (auth.blockedUntil && auth.blockedUntil <= new Date(Date.now())) {
+				if (
+					auth.blockedUntil &&
+					auth.blockedUntil <= new Date(Date.now())
+				) {
 					auth.failedAttempts = 0;
 					auth.blockedUntil = null;
 					auth.save();
@@ -189,7 +229,7 @@ class AuthController {
 					return sendResponse(
 						res,
 						HTTP_STATUS.FORBIDDEN,
-						`Please log in again at ${auth.blockedUntil}`,
+						`Please sign in again at ${auth.blockedUntil}`,
 						"Forbidden"
 					);
 				}
@@ -201,19 +241,22 @@ class AuthController {
 				delete responseAuth.blockedUntil;
 
 				// Generates a jwt with an expiry time of 1 hour
-				const jwt = jsonwebtoken.sign(responseAuth, process.env.SECRET_KEY, {
-					expiresIn: "1h",
-				});
+				const jwt = jsonwebtoken.sign(
+					responseAuth,
+					process.env.SECRET_KEY,
+					{
+						expiresIn: "1h",
+					}
+				);
 
-				// Includes jwt to the javascript object and deletes unnecessary fields
+				// Includes jwt to the javascript object
 				responseAuth.token = jwt;
-				delete responseAuth.role;
 
 				// Returns user data
 				return sendResponse(
 					res,
 					HTTP_STATUS.OK,
-					"Successfully logged in",
+					"Successfully signed in",
 					responseAuth
 				);
 			}

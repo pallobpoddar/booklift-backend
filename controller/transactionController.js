@@ -1,11 +1,11 @@
 const { validationResult } = require("express-validator");
-const sendResponse = require("../util/common");
+const sendResponse = require("../util/commonResponse");
 const HTTP_STATUS = require("../constants/statusCodes");
 const cartModel = require("../model/cart");
 const bookModel = require("../model/book");
 const transactionModel = require("../model/transaction");
 const userModel = require("../model/user");
-const balanceModel = require("../model/balance")
+const balanceModel = require("../model/balance");
 
 /**
  * Represents a cart controller
@@ -45,9 +45,14 @@ class TransactionController {
 				);
 			}
 
-			const balanceObject = await balanceModel.findOne({user: userId});
+			const balanceObject = await balanceModel.findOne({ user: userId });
 			if (balanceObject.balance < cart.total) {
-				return sendResponse(res, HTTP_STATUS.CONFLICT, "You don't have sufficient balance", "Conflict");
+				return sendResponse(
+					res,
+					HTTP_STATUS.CONFLICT,
+					"You don't have sufficient balance",
+					"Conflict"
+				);
 			}
 
 			// If any book is added in the cart but doesn't exist anymore, it returns an error
@@ -114,8 +119,6 @@ class TransactionController {
 			cart.total = 0;
 			const cartSave = await cart.save();
 
-			
-
 			// If checkout is successful, it returns a response
 			if (balanceSave && cartSave && stockSave && newTransaction) {
 				return sendResponse(
@@ -126,7 +129,7 @@ class TransactionController {
 				);
 			}
 		} catch (error) {
-			console.log(error)
+			console.log(error);
 			// Returns an error
 			return sendResponse(
 				res,
