@@ -42,7 +42,7 @@ const validatePassword = (message) => {
 		.withMessage(message);
 };
 
-// Signup and signin array validate the required fields given from request body
+// Signup, signin and forgotPassword arrays validate the required fields given from request body
 const authValidator = {
 	signup: [
 		validateEmail("Invalid email"),
@@ -90,6 +90,8 @@ const authValidator = {
 		validateEmail("Incorrect email or password"),
 		validatePassword("Incorrect email or password"),
 	],
+
+	forgotPassword: [validateEmail("Invalid email")],
 };
 
 // Exports the validator

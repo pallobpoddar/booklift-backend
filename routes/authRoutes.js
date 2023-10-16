@@ -14,6 +14,12 @@ const authController = require("../controller/authController");
 // Sets up the routes, invokes corresponding APIs and authentication controller methods
 authRoutes.post("/signup", authValidator.signup, authController.signup);
 authRoutes.post("/signin", authValidator.signin, authController.signin);
+authRoutes.post(
+	"/forgot-password",
+	authValidator.forgotPassword,
+	authController.sendForgotPasswordEmail
+);
+authRoutes.post("/reset-password", authController.resetPassword);
 
 // Exports the authentication routes
 module.exports = authRoutes;
