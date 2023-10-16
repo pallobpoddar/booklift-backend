@@ -22,6 +22,97 @@ const ejsRenderFile = promisify(ejs.renderFile);
 const crypto = require("crypto");
 const { default: mongoose } = require("mongoose");
 
+const signupHelper = async (req, res) => {
+	// If the user provides invalid properties, it returns an error
+	const allowedProperties = [
+		"email",
+		"password",
+		"confirmPassword",
+		"name",
+		"phone",
+		"dateOfBirth",
+		"gender",
+	];
+	const unexpectedProps = Object.keys(req.body).filter(
+		(key) => !allowedProperties.includes(key)
+	);
+	if (unexpectedProps.length > 0) {
+		return sendResponse(
+			res,
+			HTTP_STATUS.UNPROCESSABLE_ENTITY,
+			"Failed to sign up",
+			`Unexpected properties: ${unexpectedProps.join(", ")}`
+		);
+	}
+
+	// If the user provides invalid information, it returns an error
+	const validation = validationResult(req).array();
+	if (validation.length > 0) {
+		return sendResponse(
+			res,
+			HTTP_STATUS.UNPROCESSABLE_ENTITY,
+			"Failed to sign up",
+			validation
+		);
+	}
+
+	// Destructures necessary elements from request body
+	const { email, password, name, phone, dateOfBirth, gender } = req.body;
+
+	// If the user is already registered, it returns an error
+	const isEmailRegistered = await userModel.findOne({ email: email });
+	const isPhoneRegistered = await userModel.findOne({ phone: phone });
+	if (isEmailRegistered) {
+		return sendResponse(
+			res,
+			HTTP_STATUS.CONFLICT,
+			"Email is already registered",
+			"Conflict"
+		);
+	}
+	if (isPhoneRegistered) {
+		return sendResponse(
+			res,
+			HTTP_STATUS.CONFLICT,
+			"Phone number is already registered",
+			"Conflict"
+		);
+	}
+
+	// Creates a user document
+	const user = await userModel.create({
+		name: name,
+		email: email,
+		phone: phone,
+		dateOfBirth: dateOfBirth,
+		gender: gender,
+	});
+
+	// Converts the mongoDB document to a javascript object	and deletes unnecessary fields
+	const userFilteredInfo = deleteStatements(user);
+
+	// Hashes the password
+	const hashedPassword = await bcrypt.hash(password, 10).then((hash) => {
+		return hash;
+	});
+
+	// Creates an auth document and returns user data
+	await authModel
+		.create({
+			email: email,
+			password: hashedPassword,
+			user: user._id,
+		})
+		.then(() => {
+			return sendResponse(
+				res,
+				HTTP_STATUS.OK,
+				"Successfully signed up",
+				userFilteredInfo
+			);
+		});
+};
+
 /**
  * Represents an authentication controller
  * @class
@@ -35,94 +126,7 @@ class AuthController {
 	 */
 	async signup(req, res) {
 		try {
-			// If the user provides invalid properties, it returns an error
-			const allowedProperties = [
-				"email",
-				"password",
-				"confirmPassword",
-				"name",
-				"phone",
-				"dateOfBirth",
-				"gender",
-			];
-			const unexpectedProps = Object.keys(req.body).filter(
-				(key) => !allowedProperties.includes(key)
-			);
-			if (unexpectedProps.length > 0) {
-				return sendResponse(
-					res,
-					HTTP_STATUS.UNPROCESSABLE_ENTITY,
-					"Failed to sign up",
-					`Unexpected properties: ${unexpectedProps.join(", ")}`
-				);
-			}
-
-			// If the user provides invalid information, it returns an error
-			const validation = validationResult(req).array();
-			if (validation.length > 0) {
-				return sendResponse(
-					res,
-					HTTP_STATUS.UNPROCESSABLE_ENTITY,
-					"Failed to sign up",
-					validation
-				);
-			}
-
-			// Destructures necessary elements from request body
-			const { email, password, name, phone, dateOfBirth, gender } = req.body;
-
-			// If the user is already registered, it returns an error
-			const isEmailRegistered = await userModel.findOne({ email: email });
-			const isPhoneRegistered = await userModel.findOne({ phone: phone });
-			if (isEmailRegistered) {
-				return sendResponse(
-					res,
-					HTTP_STATUS.CONFLICT,
-					"Email is already registered",
-					"Conflict"
-				);
-			}
-			if (isPhoneRegistered) {
-				return sendResponse(
-					res,
-					HTTP_STATUS.CONFLICT,
-					"Phone number is already registered",
-					"Conflict"
-				);
-			}
-
-			// Creates a user document
-			const user = await userModel.create({
-				name: name,
-				email: email,
-				phone: phone,
-				dateOfBirth: dateOfBirth,
-				gender: gender,
-			});
-
-			// Converts the mongoDB document to a javascript object	and deletes unnecessary fields
-			const userFilteredInfo = deleteStatements(user);
-
-			// Hashes the password
-			const hashedPassword = await bcrypt.hash(password, 10).then((hash) => {
-				return hash;
-			});
-
-			// Creates an auth document and returns user data
-			await authModel
-				.create({
-					email: email,
-					password: hashedPassword,
-					user: user._id,
-				})
-				.then(() => {
-					return sendResponse(
-						res,
-						HTTP_STATUS.OK,
-						"Successfully signed up",
-						userFilteredInfo
-					);
-				});
+			signupHelper(req, res);
 		} catch (error) {
 			// Returns an error
 			return sendResponse(
@@ -218,7 +222,10 @@ class AuthController {
 				/* If passwords match, it checks whether or not the blocked duration is over
 				 * If it's over, it assigns failedAttempts and blockedUntil to 0 and null respectively
 				 */
-				if (auth.blockedUntil && auth.blockedUntil <= new Date(Date.now())) {
+				if (
+					auth.blockedUntil &&
+					auth.blockedUntil <= new Date(Date.now())
+				) {
 					auth.failedAttempts = 0;
 					auth.blockedUntil = null;
 					auth.save();
@@ -242,9 +249,13 @@ class AuthController {
 				delete responseAuth.blockedUntil;
 
 				// Generates a jwt with an expiry time of 1 hour
-				const jwt = jsonwebtoken.sign(responseAuth, process.env.SECRET_KEY, {
-					expiresIn: "1h",
-				});
+				const jwt = jsonwebtoken.sign(
+					responseAuth,
+					process.env.SECRET_KEY,
+					{
+						expiresIn: "1h",
+					}
+				);
 
 				// Includes jwt to the javascript object
 				responseAuth.token = jwt;
@@ -374,15 +385,26 @@ class AuthController {
 				_id: id,
 			});
 			if (!auth) {
-				return sendResponse(res, HTTP_STATUS.NOT_FOUND, "Invalid request");
+				return sendResponse(
+					res,
+					HTTP_STATUS.NOT_FOUND,
+					"Invalid request"
+				);
 			}
 
 			if (auth.resetPasswordExpire < Date.now()) {
 				return sendResponse(res, HTTP_STATUS.GONE, "Expired request");
 			}
 
-			if (auth.resetPasswordToken !== token || auth.resetPassword === false) {
-				return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Invalid token");
+			if (
+				auth.resetPasswordToken !== token ||
+				auth.resetPassword === false
+			) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.UNAUTHORIZED,
+					"Invalid token"
+				);
 			}
 
 			if (newPassword !== confirmPassword) {
@@ -402,9 +424,11 @@ class AuthController {
 			}
 
 			// Hashes the password
-			const hashedPassword = await bcrypt.hash(newPassword, 10).then((hash) => {
-				return hash;
-			});
+			const hashedPassword = await bcrypt
+				.hash(newPassword, 10)
+				.then((hash) => {
+					return hash;
+				});
 
 			const result = await authModel.findOneAndUpdate(
 				{ _id: new mongoose.Types.ObjectId(id) },
@@ -443,15 +467,26 @@ class AuthController {
 				_id: new mongoose.Types.ObjectId(id),
 			});
 			if (!auth) {
-				return sendResponse(res, HTTP_STATUS.NOT_FOUND, "Invalid request");
+				return sendResponse(
+					res,
+					HTTP_STATUS.NOT_FOUND,
+					"Invalid request"
+				);
 			}
 
 			if (auth.resetPasswordExpire < Date.now()) {
 				return sendResponse(res, HTTP_STATUS.GONE, "Expired request");
 			}
 
-			if (auth.resetPasswordToken !== token || auth.resetPassword === false) {
-				return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Invalid token");
+			if (
+				auth.resetPasswordToken !== token ||
+				auth.resetPassword === false
+			) {
+				return sendResponse(
+					res,
+					HTTP_STATUS.UNAUTHORIZED,
+					"Invalid token"
+				);
 			}
 			return sendResponse(res, HTTP_STATUS.OK, "Request is still valid");
 		} catch (error) {

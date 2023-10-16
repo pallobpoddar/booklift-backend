@@ -774,3 +774,4 @@
 ::ffff:127.0.0.1 - - [16/Oct/2023:11:48:20 +0000] "POST /api/auths/reset-password HTTP/1.1" 500 75 "-" "PostmanRuntime/7.33.0"
 ::ffff:127.0.0.1 - - [16/Oct/2023:11:49:06 +0000] "PATCH /api/books/update-one-by-id/6506b2c30617485ea186f51 HTTP/1.1" 422 182 "-" "PostmanRuntime/7.33.0"
 ::ffff:127.0.0.1 - - [16/Oct/2023:11:49:25 +0000] "PATCH /api/books/update-one-by-id/6506b2c30617485ea186f516 HTTP/1.1" 400 68 "-" "PostmanRuntime/7.33.0"
+::1 - - [16/Oct/2023:16:57:30 +0000] "POST /api/auths/signup HTTP/1.1" 409 77 "-" "PostmanRuntime/7.33.0"
