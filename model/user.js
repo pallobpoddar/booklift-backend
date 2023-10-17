@@ -28,6 +28,11 @@ const userSchema = new mongoose.Schema(
 			unique: true,
 			maxLength: 14,
 		},
+		image: {
+			type: String,
+			required: false,
+			unique: true,
+		},
 		dateOfBirth: {
 			type: Date,
 			required: false,

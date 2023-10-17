@@ -88,6 +88,8 @@ class UserController {
 				);
 			}
 
+			const image = req.file.path.replace(/\\/g, "/");
+
 			// Updates user data and unselects unnecessary fields
 			const user = await userModel
 				.findByIdAndUpdate(
@@ -97,6 +99,7 @@ class UserController {
 						phone: phone,
 						birthday: birthday,
 						gender: gender,
+						image: image,
 					},
 					{ new: true }
 				)

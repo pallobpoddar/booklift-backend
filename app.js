@@ -13,6 +13,7 @@ const fs = require("fs");
 const path = require("path");
 const dotenv = require("dotenv");
 const cors = require("cors");
+const multer = require("multer");
 const HTTP_STATUS = require("./constants/statusCodes");
 const sendResponse = require("./util/commonResponse");
 const authRouter = require("./routes/authRoutes");
@@ -23,6 +24,7 @@ const transactionRouter = require("./routes/transactionRoutes");
 const cartRouter = require("./routes/cartRoutes");
 const reviewRouter = require("./routes/reviewRoutes");
 const balanceRouter = require("./routes/balanceRoutes");
+const fileRouter = require("./routes/fileRoutes");
 const databaseConnection = require("./config/database");
 
 // Creates a write stream to log data
@@ -67,6 +69,7 @@ app.use("/api/carts", cartRouter);
 app.use("/api/reviews", reviewRouter);
 app.use("/api/discounts", discountRouter);
 app.use("/api/balances", balanceRouter);
+app.use("/api/files", fileRouter);
 app.use(async (req, res) => {
 	return sendResponse(
 		res,
@@ -74,6 +77,15 @@ app.use(async (req, res) => {
 		"Page not found",
 		"Not found"
 	);
+});
+
+app.use((err, req, res, next) => {
+	console.log(err);
+	if (err instanceof multer.MulterError) {
+		return sendResponse(res, 404, err.message);
+	} else {
+		next(err);
+	}
 });
 
 // Connection with the database

@@ -10,6 +10,7 @@ const express = require("express");
 const userRoutes = express();
 const userController = require("../controller/userController");
 const userValidator = require("../middleware/userValidation");
+const upload = require("../config/files");
 const {
 	isAuthenticated,
 	isAuthorized,
@@ -21,6 +22,7 @@ userRoutes.patch(
 	"/update-one-by-id/:id",
 	isAuthenticated,
 	isAuthorized,
+	upload.single("image"),
 	userValidator.userUpdate,
 	userController.updateOneByID
 );
