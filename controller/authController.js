@@ -11,7 +11,6 @@ const sendResponse = require("../util/commonResponse");
 const HTTP_STATUS = require("../constants/statusCodes");
 const userModel = require("../model/user");
 const authModel = require("../model/auth");
-const { deleteStatements } = require("../util/commonFunctions");
 const bcrypt = require("bcrypt");
 const jsonwebtoken = require("jsonwebtoken");
 const path = require("path");
@@ -34,6 +33,7 @@ class AuthController {
 	 * @param {*} res
 	 */
 	async signup(req, res) {
+		// Invokes the helper function for signup
 		signupHelper(req, res);
 	}
 
@@ -217,13 +217,16 @@ class AuthController {
 				);
 			}
 
+			// Generates a random reset token using crypto
 			const resetToken = crypto.randomBytes(32).toString("hex");
+
+			// Saves the token, expired time and a boolean value inside the model
 			auth.resetPasswordToken = resetToken;
 			auth.resetPasswordExpire = Date.now() + 60 * 60 * 1000;
 			auth.resetPassword = true;
-
 			await auth.save();
 
+			// Creates the reset URL
 			const resetURL = path.join(
 				process.env.FRONTEND_URL,
 				"reset-password",
@@ -231,6 +234,7 @@ class AuthController {
 				auth._id.toString()
 			);
 
+			// Creates the html body using ejs
 			const htmlBody = await ejsRenderFile(
 				path.join(__dirname, "..", "views", "forgotPassword.ejs"),
 				{
@@ -239,6 +243,7 @@ class AuthController {
 				}
 			);
 
+			// Sets the mail attributes
 			const result = await transporter.sendMail({
 				from: "khonika@system.com",
 				to: `${auth.user.name} ${email}`,
@@ -246,6 +251,7 @@ class AuthController {
 				html: htmlBody,
 			});
 
+			// If message id exists, it returns a success response
 			if (result.messageId) {
 				return sendResponse(
 					res,
@@ -253,6 +259,8 @@ class AuthController {
 					"Successfully requested for resetting password"
 				);
 			}
+
+			// Otherwise, it returns an error
 			return sendResponse(
 				res,
 				HTTP_STATUS.UNPROCESSABLE_ENTITY,
