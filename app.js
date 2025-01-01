@@ -1,11 +1,3 @@
-/*
- * Filename: app.js
- * Author: Pallob Poddar
- * Date: September 19, 2023
- * Description: Root module: it connects the server with the routes and database
- */
-
-// Imports necessary modules
 const express = require("express");
 const app = express();
 const morgan = require("morgan");
@@ -27,24 +19,17 @@ const balanceRouter = require("./routes/balanceRoutes");
 const fileRouter = require("./routes/fileRoutes");
 const databaseConnection = require("./config/database");
 
-// Creates a write stream to log data
 const accessLogStream = fs.createWriteStream(
 	path.join(__dirname, "logFile.log"),
 	{ flags: "a" }
 );
 
-// Loads environment variables from .env file
 dotenv.config();
 
-// Enables CORS for all routes
 app.use(cors());
-
-// Middleware to parse JSON, text and URL-encoded request bodies
 app.use(express.json());
 app.use(express.text());
 app.use(express.urlencoded({ extended: true }));
-
-// If the user provides invalid json object, it returns an error
 app.use((err, req, res, next) => {
 	if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
 		return sendResponse(
@@ -56,11 +41,7 @@ app.use((err, req, res, next) => {
 	}
 	next();
 });
-
-// Configures morgan middleware
 app.use(morgan("combined", { stream: accessLogStream }));
-
-// Sets up the routes; if the user provides any other routes, it returns an error
 app.use("/api/auths", authRouter);
 app.use("/api/users", userRouter);
 app.use("/api/books", bookRouter);
@@ -78,7 +59,6 @@ app.use(async (req, res) => {
 		"Not found"
 	);
 });
-
 app.use((err, req, res, next) => {
 	console.log(err);
 	if (err instanceof multer.MulterError) {
@@ -88,7 +68,6 @@ app.use((err, req, res, next) => {
 	}
 });
 
-// Connection with the database
 databaseConnection(() => {
 	app.listen(8000, () => {
 		console.log("Server is running on 8000");

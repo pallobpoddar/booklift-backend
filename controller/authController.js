@@ -1,11 +1,3 @@
-/*
- * Filename: authController.js
- * Author: Pallob Poddar
- * Date: October 14, 2023
- * Description: This module connects the user and auth model and sends appropriate responses
- */
-
-// Imports necessary modules
 const { validationResult } = require("express-validator");
 const sendResponse = require("../util/commonResponse");
 const HTTP_STATUS = require("../constants/statusCodes");
@@ -20,360 +12,390 @@ const transporter = require("../config/mail");
 const ejsRenderFile = promisify(ejs.renderFile);
 const crypto = require("crypto");
 const { default: mongoose } = require("mongoose");
-const { signupHelper } = require("../util/commonFunctions");
 
-/**
- * Represents an authentication controller
- * @class
- */
 class AuthController {
-	/**
-	 * Signup function for users
-	 * @param {*} req
-	 * @param {*} res
-	 */
-	async signup(req, res) {
-		// Invokes the helper function for signup
-		signupHelper(req, res);
-	}
+  async signup(req, res) {
+    try {
+      const { name, email, password } = req.body;
 
-	/**
-	 * Signin function for users and admins
-	 * @param {*} req
-	 * @param {*} res
-	 * @returns response to the client
-	 */
-	async signin(req, res) {
-		try {
-			// If the user provides invalid properties, it returns an error
-			const allowedProperties = ["email", "password"];
-			const unexpectedProps = Object.keys(req.body).filter(
-				(key) => !allowedProperties.includes(key)
-			);
-			if (unexpectedProps.length > 0) {
-				return sendResponse(
-					res,
-					HTTP_STATUS.UNPROCESSABLE_ENTITY,
-					"Failed to sign in",
-					`Unexpected properties: ${unexpectedProps.join(", ")}`
-				);
-			}
+      const isEmailRegistered = await authModel.findOne({ email: email });
+      if (isEmailRegistered) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.CONFLICT,
+          "Email is already registered"
+        );
+      }
 
-			// If the user provides invalid information, it returns an error
-			const validation = validationResult(req).array();
-			if (validation.length > 0) {
-				return sendResponse(
-					res,
-					HTTP_STATUS.UNPROCESSABLE_ENTITY,
-					"Failed to sign in",
-					validation
-				);
-			}
+      const user = await userModel.create({
+        name: name,
+        email: email,
+      });
 
-			// Destructures necessary elements from request body
-			const { email, password } = req.body;
+      const filteredInfo = user.toObject();
+      delete filteredInfo.createdAt;
+      delete filteredInfo.updatedAt;
+      delete filteredInfo.__v;
 
-			// Populates user data from auth model and discards unnecessary fields
-			const auth = await authModel
-				.findOne({ email: email })
-				.populate("user", "-createdAt -updatedAt -__v")
-				.select("-email -createdAt -updatedAt -__v");
+      const hashedPassword = await bcrypt.hash(password, 10).then((hash) => {
+        return hash;
+      });
 
-			// If the user is not registered, it returns an error
-			if (!auth) {
-				return sendResponse(
-					res,
-					HTTP_STATUS.UNAUTHORIZED,
-					"User is not registered",
-					"Unauthorized"
-				);
-			}
+      await authModel
+        .create({
+          email: email,
+          password: hashedPassword,
+          user: user._id,
+        })
+        .then(() => {
+          return sendResponse(
+            res,
+            HTTP_STATUS.OK,
+            "Successfully signed up",
+            filteredInfo
+          );
+        });
+    } catch (error) {
+      console.log(error);
+      return sendResponse(
+        res,
+        HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        "Internal server error"
+      );
+    }
+  }
 
-			// Compares the user given password with hashed password using bcrypt
-			const checkPassword = await bcrypt.compare(password, auth.password);
+  async signin(req, res) {
+    try {
+      // If the user provides invalid properties, it returns an error
+      const allowedProperties = ["email", "password"];
+      const unexpectedProps = Object.keys(req.body).filter(
+        (key) => !allowedProperties.includes(key)
+      );
+      if (unexpectedProps.length > 0) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.UNPROCESSABLE_ENTITY,
+          "Failed to sign in",
+          `Unexpected properties: ${unexpectedProps.join(", ")}`
+        );
+      }
 
-			// If passwords don't match, it increments failedAttempts by 1
-			if (!checkPassword) {
-				auth.failedAttempts += 1;
+      // If the user provides invalid information, it returns an error
+      const validation = validationResult(req).array();
+      if (validation.length > 0) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.UNPROCESSABLE_ENTITY,
+          "Failed to sign in",
+          validation
+        );
+      }
 
-				// If failedAttempts is less than 5, it returns a response
-				if (auth.failedAttempts < 5) {
-					auth.save();
-					return sendResponse(
-						res,
-						HTTP_STATUS.UNAUTHORIZED,
-						"Invalid credentials",
-						"Unauthorized"
-					);
-				}
+      // Destructures necessary elements from request body
+      const { email, password } = req.body;
 
-				// If failedAttempts is greater than or equal to 5, it blocks the user login for an hour
-				const blockedDuration = 60 * 60 * 1000;
-				auth.blockedUntil = new Date(Date.now() + blockedDuration);
-				auth.save();
-				return sendResponse(
-					res,
-					HTTP_STATUS.FORBIDDEN,
-					"Your signin access has been blocked for an hour",
-					"Forbidden"
-				);
-			} else {
-				/* If passwords match, it checks whether or not the blocked duration is over
-				 * If it's over, it assigns failedAttempts and blockedUntil to 0 and null respectively
-				 */
-				if (auth.blockedUntil && auth.blockedUntil <= new Date(Date.now())) {
-					auth.failedAttempts = 0;
-					auth.blockedUntil = null;
-					auth.save();
-				} else if (
-					// If the blocked duration isn't over yet, it returns an error
-					auth.blockedUntil &&
-					auth.blockedUntil > new Date(Date.now())
-				) {
-					return sendResponse(
-						res,
-						HTTP_STATUS.FORBIDDEN,
-						`Please sign in again at ${auth.blockedUntil}`,
-						"Forbidden"
-					);
-				}
+      // Populates user data from auth model and discards unnecessary fields
+      const auth = await authModel
+        .findOne({ email: email })
+        .populate("user", "-createdAt -updatedAt -__v")
+        .select("-email -createdAt -updatedAt -__v");
 
-				// Converts the mongoDB document to a javascript object and deletes unnecessary fields
-				const responseAuth = auth.toObject();
-				delete responseAuth.password;
-				delete responseAuth.failedAttempts;
-				delete responseAuth.blockedUntil;
+      // If the user is not registered, it returns an error
+      if (!auth) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.UNAUTHORIZED,
+          "User is not registered",
+          "Unauthorized"
+        );
+      }
 
-				// Generates a jwt with an expiry time of 1 hour
-				const jwt = jsonwebtoken.sign(responseAuth, process.env.SECRET_KEY, {
-					expiresIn: "1h",
-				});
+      // Compares the user given password with hashed password using bcrypt
+      const checkPassword = await bcrypt.compare(password, auth.password);
 
-				// Includes jwt to the javascript object
-				responseAuth.token = jwt;
+      // If passwords don't match, it increments failedAttempts by 1
+      if (!checkPassword) {
+        auth.failedAttempts += 1;
 
-				// Returns user data
-				return sendResponse(
-					res,
-					HTTP_STATUS.OK,
-					"Successfully signed in",
-					responseAuth
-				);
-			}
-		} catch (error) {
-			// Returns an error
-			return sendResponse(
-				res,
-				HTTP_STATUS.INTERNAL_SERVER_ERROR,
-				"Internal server error",
-				"Server error"
-			);
-		}
-	}
+        // If failedAttempts is less than 5, it returns a response
+        if (auth.failedAttempts < 5) {
+          auth.save();
+          return sendResponse(
+            res,
+            HTTP_STATUS.UNAUTHORIZED,
+            "Invalid credentials",
+            "Unauthorized"
+          );
+        }
 
-	async sendForgotPasswordEmail(req, res) {
-		try {
-			// If the user provides invalid properties, it returns an error
-			const allowedProperties = ["email"];
-			const unexpectedProps = Object.keys(req.body).filter(
-				(key) => !allowedProperties.includes(key)
-			);
-			if (unexpectedProps.length > 0) {
-				return sendResponse(
-					res,
-					HTTP_STATUS.UNPROCESSABLE_ENTITY,
-					"Failed to reset password",
-					`Unexpected properties: ${unexpectedProps.join(", ")}`
-				);
-			}
+        // If failedAttempts is greater than or equal to 5, it blocks the user login for an hour
+        const blockedDuration = 60 * 60 * 1000;
+        auth.blockedUntil = new Date(Date.now() + blockedDuration);
+        auth.save();
+        return sendResponse(
+          res,
+          HTTP_STATUS.FORBIDDEN,
+          "Your signin access has been blocked for an hour",
+          "Forbidden"
+        );
+      } else {
+        /* If passwords match, it checks whether or not the blocked duration is over
+         * If it's over, it assigns failedAttempts and blockedUntil to 0 and null respectively
+         */
+        if (auth.blockedUntil && auth.blockedUntil <= new Date(Date.now())) {
+          auth.failedAttempts = 0;
+          auth.blockedUntil = null;
+          auth.save();
+        } else if (
+          // If the blocked duration isn't over yet, it returns an error
+          auth.blockedUntil &&
+          auth.blockedUntil > new Date(Date.now())
+        ) {
+          return sendResponse(
+            res,
+            HTTP_STATUS.FORBIDDEN,
+            `Please sign in again at ${auth.blockedUntil}`,
+            "Forbidden"
+          );
+        }
 
-			// If the user provides invalid information, it returns an error
-			const validation = validationResult(req).array();
-			if (validation.length > 0) {
-				return sendResponse(
-					res,
-					HTTP_STATUS.UNPROCESSABLE_ENTITY,
-					"Failed to reset password",
-					validation
-				);
-			}
+        // Converts the mongoDB document to a javascript object and deletes unnecessary fields
+        const responseAuth = auth.toObject();
+        delete responseAuth.password;
+        delete responseAuth.failedAttempts;
+        delete responseAuth.blockedUntil;
 
-			// Destructures necessary elements from request body
-			const { email } = req.body;
+        // Generates a jwt with an expiry time of 1 hour
+        const jwt = jsonwebtoken.sign(responseAuth, process.env.SECRET_KEY, {
+          expiresIn: "1h",
+        });
 
-			// Populates user data from auth model and discards unnecessary fields
-			const auth = await authModel
-				.findOne({ email: email })
-				.populate("user", "-createdAt -updatedAt -__v")
-				.select("-email -createdAt -updatedAt -__v");
+        // Includes jwt to the javascript object
+        responseAuth.token = jwt;
 
-			// If the user is not registered, it returns an error
-			if (!auth) {
-				return sendResponse(
-					res,
-					HTTP_STATUS.UNAUTHORIZED,
-					"User is not registered",
-					"Unauthorized"
-				);
-			}
+        // Returns user data
+        return sendResponse(
+          res,
+          HTTP_STATUS.OK,
+          "Successfully signed in",
+          responseAuth
+        );
+      }
+    } catch (error) {
+      // Returns an error
+      return sendResponse(
+        res,
+        HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        "Internal server error",
+        "Server error"
+      );
+    }
+  }
 
-			// Generates a random reset token using crypto
-			const resetToken = crypto.randomBytes(32).toString("hex");
+  async sendForgotPasswordEmail(req, res) {
+    try {
+      // If the user provides invalid properties, it returns an error
+      const allowedProperties = ["email"];
+      const unexpectedProps = Object.keys(req.body).filter(
+        (key) => !allowedProperties.includes(key)
+      );
+      if (unexpectedProps.length > 0) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.UNPROCESSABLE_ENTITY,
+          "Failed to reset password",
+          `Unexpected properties: ${unexpectedProps.join(", ")}`
+        );
+      }
 
-			// Saves the token, expired time and a boolean value inside the model
-			auth.resetPasswordToken = resetToken;
-			auth.resetPasswordExpire = Date.now() + 60 * 60 * 1000;
-			auth.resetPassword = true;
-			await auth.save();
+      // If the user provides invalid information, it returns an error
+      const validation = validationResult(req).array();
+      if (validation.length > 0) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.UNPROCESSABLE_ENTITY,
+          "Failed to reset password",
+          validation
+        );
+      }
 
-			// Creates the reset URL
-			const resetURL = path.join(
-				process.env.FRONTEND_URL,
-				"reset-password",
-				resetToken,
-				auth._id.toString()
-			);
+      // Destructures necessary elements from request body
+      const { email } = req.body;
 
-			// Creates the html body using ejs
-			const htmlBody = await ejsRenderFile(
-				path.join(__dirname, "..", "views", "forgotPassword.ejs"),
-				{
-					name: auth.user.name,
-					resetURL: resetURL,
-				}
-			);
+      // Populates user data from auth model and discards unnecessary fields
+      const auth = await authModel
+        .findOne({ email: email })
+        .populate("user", "-createdAt -updatedAt -__v")
+        .select("-email -createdAt -updatedAt -__v");
 
-			// Sets the mail attributes
-			const result = await transporter.sendMail({
-				from: "khonika@system.com",
-				to: `${auth.user.name} ${email}`,
-				subject: "Forgot password?",
-				html: htmlBody,
-			});
+      // If the user is not registered, it returns an error
+      if (!auth) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.UNAUTHORIZED,
+          "User is not registered",
+          "Unauthorized"
+        );
+      }
 
-			// If message id exists, it returns a success response
-			if (result.messageId) {
-				return sendResponse(
-					res,
-					HTTP_STATUS.OK,
-					"Successfully requested for resetting password"
-				);
-			}
+      // Generates a random reset token using crypto
+      const resetToken = crypto.randomBytes(32).toString("hex");
 
-			// Otherwise, it returns an error
-			return sendResponse(
-				res,
-				HTTP_STATUS.UNPROCESSABLE_ENTITY,
-				"Something went wrong"
-			);
-		} catch (error) {
-			// Returns an error
-			return sendResponse(
-				res,
-				HTTP_STATUS.INTERNAL_SERVER_ERROR,
-				"Internal server error",
-				"Server error"
-			);
-		}
-	}
+      // Saves the token, expired time and a boolean value inside the model
+      auth.resetPasswordToken = resetToken;
+      auth.resetPasswordExpire = Date.now() + 60 * 60 * 1000;
+      auth.resetPassword = true;
+      await auth.save();
 
-	async resetPassword(req, res) {
-		try {
-			const { token, id, newPassword, confirmPassword } = req.body;
+      // Creates the reset URL
+      const resetURL = path.join(
+        process.env.FRONTEND_URL,
+        "reset-password",
+        resetToken,
+        auth._id.toString()
+      );
 
-			const auth = await authModel.findById({
-				_id: id,
-			});
-			if (!auth) {
-				return sendResponse(res, HTTP_STATUS.NOT_FOUND, "Invalid request");
-			}
+      // Creates the html body using ejs
+      const htmlBody = await ejsRenderFile(
+        path.join(__dirname, "..", "views", "forgotPassword.ejs"),
+        {
+          name: auth.user.name,
+          resetURL: resetURL,
+        }
+      );
 
-			if (auth.resetPasswordExpire < Date.now()) {
-				return sendResponse(res, HTTP_STATUS.GONE, "Expired request");
-			}
+      // Sets the mail attributes
+      const result = await transporter.sendMail({
+        from: "khonika@system.com",
+        to: `${auth.user.name} ${email}`,
+        subject: "Forgot password?",
+        html: htmlBody,
+      });
 
-			if (auth.resetPasswordToken !== token || auth.resetPassword === false) {
-				return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Invalid token");
-			}
+      // If message id exists, it returns a success response
+      if (result.messageId) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.OK,
+          "Successfully requested for resetting password"
+        );
+      }
 
-			if (newPassword !== confirmPassword) {
-				return sendResponse(
-					res,
-					HTTP_STATUS.NOT_FOUND,
-					"Passwords do not match"
-				);
-			}
+      // Otherwise, it returns an error
+      return sendResponse(
+        res,
+        HTTP_STATUS.UNPROCESSABLE_ENTITY,
+        "Something went wrong"
+      );
+    } catch (error) {
+      // Returns an error
+      return sendResponse(
+        res,
+        HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        "Internal server error",
+        "Server error"
+      );
+    }
+  }
 
-			if (await bcrypt.compare(newPassword, auth.password)) {
-				return sendResponse(
-					res,
-					HTTP_STATUS.NOT_FOUND,
-					"Password cannot be same as the old password"
-				);
-			}
+  async resetPassword(req, res) {
+    try {
+      const { token, id, newPassword, confirmPassword } = req.body;
 
-			// Hashes the password
-			const hashedPassword = await bcrypt.hash(newPassword, 10).then((hash) => {
-				return hash;
-			});
+      const auth = await authModel.findById({
+        _id: id,
+      });
+      if (!auth) {
+        return sendResponse(res, HTTP_STATUS.NOT_FOUND, "Invalid request");
+      }
 
-			const result = await authModel.findOneAndUpdate(
-				{ _id: new mongoose.Types.ObjectId(id) },
-				{
-					password: hashedPassword,
-					resetPassword: false,
-					resetPasswordExpire: null,
-					resetPasswordToken: null,
-				}
-			);
+      if (auth.resetPasswordExpire < Date.now()) {
+        return sendResponse(res, HTTP_STATUS.GONE, "Expired request");
+      }
 
-			if (result.isModified) {
-				return sendResponse(
-					res,
-					HTTP_STATUS.OK,
-					"Successfully updated password"
-				);
-			}
-		} catch (error) {
-			console.log(error);
-			// Returns an error
-			return sendResponse(
-				res,
-				HTTP_STATUS.INTERNAL_SERVER_ERROR,
-				"Internal server error",
-				"Server error"
-			);
-		}
-	}
+      if (auth.resetPasswordToken !== token || auth.resetPassword === false) {
+        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Invalid token");
+      }
 
-	async validatePasswordResetRequest(req, res) {
-		try {
-			const { token, id } = req.body;
+      if (newPassword !== confirmPassword) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.NOT_FOUND,
+          "Passwords do not match"
+        );
+      }
 
-			const auth = await authModel.findOne({
-				_id: new mongoose.Types.ObjectId(id),
-			});
-			if (!auth) {
-				return sendResponse(res, HTTP_STATUS.NOT_FOUND, "Invalid request");
-			}
+      if (await bcrypt.compare(newPassword, auth.password)) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.NOT_FOUND,
+          "Password cannot be same as the old password"
+        );
+      }
 
-			if (auth.resetPasswordExpire < Date.now()) {
-				return sendResponse(res, HTTP_STATUS.GONE, "Expired request");
-			}
+      // Hashes the password
+      const hashedPassword = await bcrypt.hash(newPassword, 10).then((hash) => {
+        return hash;
+      });
 
-			if (auth.resetPasswordToken !== token || auth.resetPassword === false) {
-				return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Invalid token");
-			}
-			return sendResponse(res, HTTP_STATUS.OK, "Request is still valid");
-		} catch (error) {
-			console.log(error);
-			return sendResponse(
-				res,
-				HTTP_STATUS.INTERNAL_SERVER_ERROR,
-				"Something went wrong!"
-			);
-		}
-	}
+      const result = await authModel.findOneAndUpdate(
+        { _id: new mongoose.Types.ObjectId(id) },
+        {
+          password: hashedPassword,
+          resetPassword: false,
+          resetPasswordExpire: null,
+          resetPasswordToken: null,
+        }
+      );
+
+      if (result.isModified) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.OK,
+          "Successfully updated password"
+        );
+      }
+    } catch (error) {
+      console.log(error);
+      // Returns an error
+      return sendResponse(
+        res,
+        HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        "Internal server error",
+        "Server error"
+      );
+    }
+  }
+
+  async validatePasswordResetRequest(req, res) {
+    try {
+      const { token, id } = req.body;
+
+      const auth = await authModel.findOne({
+        _id: new mongoose.Types.ObjectId(id),
+      });
+      if (!auth) {
+        return sendResponse(res, HTTP_STATUS.NOT_FOUND, "Invalid request");
+      }
+
+      if (auth.resetPasswordExpire < Date.now()) {
+        return sendResponse(res, HTTP_STATUS.GONE, "Expired request");
+      }
+
+      if (auth.resetPasswordToken !== token || auth.resetPassword === false) {
+        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Invalid token");
+      }
+      return sendResponse(res, HTTP_STATUS.OK, "Request is still valid");
+    } catch (error) {
+      console.log(error);
+      return sendResponse(
+        res,
+        HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        "Something went wrong!"
+      );
+    }
+  }
 }
 
 // Exports the authentication controller
