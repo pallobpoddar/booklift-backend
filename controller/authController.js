@@ -1,5 +1,5 @@
 const { validationResult } = require("express-validator");
-const sendResponse = require("../util/commonResponse");
+const sendResponse = require("../utils/commonResponse");
 const HTTP_STATUS = require("../constants/statusCodes");
 const userModel = require("../model/user");
 const authModel = require("../model/auth");
@@ -12,6 +12,7 @@ const transporter = require("../config/mail");
 const ejsRenderFile = promisify(ejs.renderFile);
 const crypto = require("crypto");
 const { default: mongoose } = require("mongoose");
+const { hashPassword } = require("../utils/passwordHashing");
 
 class AuthController {
   async signup(req, res) {
@@ -37,24 +38,23 @@ class AuthController {
       delete filteredInfo.updatedAt;
       delete filteredInfo.__v;
 
-      const hashedPassword = await bcrypt.hash(password, 10).then((hash) => {
-        return hash;
+      const hashedPassword = await hashPassword(password);
+
+      await authModel.create({
+        email: email,
+        password: hashedPassword,
+        user: user._id,
       });
 
-      await authModel
-        .create({
-          email: email,
-          password: hashedPassword,
-          user: user._id,
-        })
-        .then(() => {
-          return sendResponse(
-            res,
-            HTTP_STATUS.OK,
-            "Successfully signed up",
-            filteredInfo
-          );
-        });
+      const verificationToken = crypto.randomBytes(32).toString("hex");
+      const verificationTokenExpire = Date.now() + 60 * 60 * 1000;
+
+      return sendResponse(
+        res,
+        HTTP_STATUS.OK,
+        "Successfully signed up",
+        filteredInfo
+      );
     } catch (error) {
       console.log(error);
       return sendResponse(
