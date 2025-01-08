@@ -47,11 +47,11 @@ const authSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    failedAttempts: {
+    signInFailed: {
       type: Number,
       default: 0,
     },
-    blockedUntil: {
+    signInBlockedUntil: {
       type: Date || null,
       default: null,
     },

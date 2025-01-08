@@ -4,7 +4,6 @@ const HTTP_STATUS = require("../constants/statusCodes");
 const userModel = require("../model/user");
 const authModel = require("../model/auth");
 const bcrypt = require("bcrypt");
-const jsonwebtoken = require("jsonwebtoken");
 const path = require("path");
 const { promisify } = require("util");
 const ejs = require("ejs");
@@ -12,8 +11,12 @@ const transporter = require("../config/mail");
 const ejsRenderFile = promisify(ejs.renderFile);
 const crypto = require("crypto");
 const { default: mongoose } = require("mongoose");
-const { hashPassword } = require("../utils/passwordHashing");
+const { hashPassword, comparePasswords } = require("../utils/passwordHashing");
 const { sendEmail } = require("../utils/emailSending");
+const {
+  generateAccessToken,
+  generateRefreshToken,
+} = require("../utils/tokenGeneration");
 
 class AuthController {
   async signup(req, res) {
@@ -90,124 +93,91 @@ class AuthController {
 
   async signin(req, res) {
     try {
-      // If the user provides invalid properties, it returns an error
-      const allowedProperties = ["email", "password"];
-      const unexpectedProps = Object.keys(req.body).filter(
-        (key) => !allowedProperties.includes(key)
-      );
-      if (unexpectedProps.length > 0) {
-        return sendResponse(
-          res,
-          HTTP_STATUS.UNPROCESSABLE_ENTITY,
-          "Failed to sign in",
-          `Unexpected properties: ${unexpectedProps.join(", ")}`
-        );
-      }
-
-      // If the user provides invalid information, it returns an error
-      const validation = validationResult(req).array();
-      if (validation.length > 0) {
-        return sendResponse(
-          res,
-          HTTP_STATUS.UNPROCESSABLE_ENTITY,
-          "Failed to sign in",
-          validation
-        );
-      }
-
-      // Destructures necessary elements from request body
       const { email, password } = req.body;
 
-      // Populates user data from auth model and discards unnecessary fields
       const auth = await authModel
         .findOne({ email: email })
         .populate("user", "-createdAt -updatedAt -__v")
         .select("-email -createdAt -updatedAt -__v");
-
-      // If the user is not registered, it returns an error
       if (!auth) {
         return sendResponse(
           res,
           HTTP_STATUS.UNAUTHORIZED,
-          "User is not registered",
-          "Unauthorized"
+          "Incorrect email or password"
         );
       }
 
-      // Compares the user given password with hashed password using bcrypt
-      const checkPassword = await bcrypt.compare(password, auth.password);
-
-      // If passwords don't match, it increments failedAttempts by 1
+      const checkPassword = await comparePasswords(password, auth.password);
       if (!checkPassword) {
-        auth.failedAttempts += 1;
+        auth.signInFailed += 1;
 
-        // If failedAttempts is less than 5, it returns a response
-        if (auth.failedAttempts < 5) {
+        if (auth.signInFailed < 5) {
           auth.save();
           return sendResponse(
             res,
             HTTP_STATUS.UNAUTHORIZED,
-            "Invalid credentials",
-            "Unauthorized"
+            "Incorrect email or password"
           );
         }
 
-        // If failedAttempts is greater than or equal to 5, it blocks the user login for an hour
         const blockedDuration = 60 * 60 * 1000;
-        auth.blockedUntil = new Date(Date.now() + blockedDuration);
+        auth.signInBlockedUntil = new Date(Date.now() + blockedDuration);
         auth.save();
+
         return sendResponse(
           res,
           HTTP_STATUS.FORBIDDEN,
-          "Your signin access has been blocked for an hour",
-          "Forbidden"
-        );
-      } else {
-        /* If passwords match, it checks whether or not the blocked duration is over
-         * If it's over, it assigns failedAttempts and blockedUntil to 0 and null respectively
-         */
-        if (auth.blockedUntil && auth.blockedUntil <= new Date(Date.now())) {
-          auth.failedAttempts = 0;
-          auth.blockedUntil = null;
-          auth.save();
-        } else if (
-          // If the blocked duration isn't over yet, it returns an error
-          auth.blockedUntil &&
-          auth.blockedUntil > new Date(Date.now())
-        ) {
-          return sendResponse(
-            res,
-            HTTP_STATUS.FORBIDDEN,
-            `Please sign in again at ${auth.blockedUntil}`,
-            "Forbidden"
-          );
-        }
-
-        // Converts the mongoDB document to a javascript object and deletes unnecessary fields
-        const responseAuth = auth.toObject();
-        delete responseAuth.password;
-        delete responseAuth.failedAttempts;
-        delete responseAuth.blockedUntil;
-
-        // Generates a jwt with an expiry time of 1 hour
-        const jwt = jsonwebtoken.sign(responseAuth, process.env.SECRET_KEY, {
-          expiresIn: "1h",
-        });
-
-        // Includes jwt to the javascript object
-        responseAuth.token = jwt;
-
-        // Returns user data
-        return sendResponse(
-          res,
-          HTTP_STATUS.OK,
-          "Successfully signed in",
-          responseAuth
+          "You have exceeded the maximum number of requests per hour"
         );
       }
+
+      if (
+        auth.signInBlockedUntil &&
+        auth.signInBlockedUntil > new Date(Date.now())
+      ) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.FORBIDDEN,
+          "You have exceeded the maximum number of requests per hour"
+        );
+      }
+
+      if (auth.signInFailed > 0) {
+        auth.signInFailed = 0;
+        auth.signInBlockedUntil = null;
+        auth.save();
+      }
+
+      const authObject = auth.toObject();
+      const data = {
+        id: authObject._id,
+        name: authObject.user.name,
+        email: authObject.user.email,
+        phone: authObject.user.phone,
+        address: authObject.user.address,
+        isAdmin: authObject.isAdmin,
+        isVerified: authObject.isVerified,
+      };
+
+      const accessToken = generateAccessToken(auth._id);
+      const refreshToken = generateRefreshToken(auth._id);
+
+      res.cookie("accessToken", accessToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        maxAge: 15 * 60 * 1000,
+      });
+      res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      return sendResponse(res, HTTP_STATUS.OK, "Successfully signed in", data);
     } catch (error) {
       console.error(error);
-      // Returns an error
       return sendResponse(
         res,
         HTTP_STATUS.INTERNAL_SERVER_ERROR,
