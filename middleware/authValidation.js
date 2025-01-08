@@ -1,24 +1,5 @@
 const { body } = require("express-validator");
 
-const validateEmail = (message) => {
-  return body("email").isEmail().withMessage(message);
-};
-
-const validatePassword = (message) => {
-  return body("password")
-    .exists()
-    .withMessage("Password is required")
-    .bail()
-    .isStrongPassword({
-      minLength: 8,
-      minLowercase: 1,
-      minUppercase: 1,
-      minSymbols: 1,
-      minNumbers: 1,
-    })
-    .withMessage(message);
-};
-
 const authValidator = {
   signup: [
     body("name")
@@ -70,11 +51,39 @@ const authValidator = {
   ],
 
   signin: [
-    validateEmail("Incorrect email or password"),
-    validatePassword("Incorrect email or password"),
+    body("email")
+      .exists()
+      .withMessage("Email is required")
+      .bail()
+      .isEmail()
+      .withMessage("Invalid email"),
+    body("password")
+      .exists()
+      .withMessage("Password is required")
+      .bail()
+      .isStrongPassword({
+        minLength: 8,
+        minLowercase: 1,
+        minUppercase: 1,
+        minSymbols: 1,
+        minNumbers: 1,
+      })
+      .withMessage(
+        "Password must contain at least one lowercase letter, one uppercase letter, one number, one special character and be at least 8 characters long"
+      )
+      .bail()
+      .isLength({ max: 20 })
+      .withMessage("Character limit exceeded"),
   ],
 
-  forgotPassword: [validateEmail("Invalid email")],
+  forgotPassword: [
+    body("email")
+      .exists()
+      .withMessage("Email is required")
+      .bail()
+      .isEmail()
+      .withMessage("Invalid email"),
+  ],
 };
 
 module.exports = authValidator;

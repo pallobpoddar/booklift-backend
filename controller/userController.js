@@ -7,7 +7,7 @@
 
 // Imports necessary modules
 const userModel = require("../model/user");
-const sendResponse = require("../util/commonResponse");
+const sendResponse = require("../utils/commonResponse");
 const HTTP_STATUS = require("../constants/statusCodes");
 const { validationResult } = require("express-validator");
 

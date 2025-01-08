@@ -13,6 +13,7 @@ const ejsRenderFile = promisify(ejs.renderFile);
 const crypto = require("crypto");
 const { default: mongoose } = require("mongoose");
 const { hashPassword } = require("../utils/passwordHashing");
+const { sendEmail } = require("../utils/emailSending");
 
 class AuthController {
   async signup(req, res) {
@@ -33,14 +34,9 @@ class AuthController {
         email: email,
       });
 
-      const filteredInfo = user.toObject();
-      delete filteredInfo.createdAt;
-      delete filteredInfo.updatedAt;
-      delete filteredInfo.__v;
-
       const hashedPassword = await hashPassword(password);
 
-      await authModel.create({
+      const auth = await authModel.create({
         email: email,
         password: hashedPassword,
         user: user._id,
@@ -49,14 +45,41 @@ class AuthController {
       const verificationToken = crypto.randomBytes(32).toString("hex");
       const verificationTokenExpire = Date.now() + 60 * 60 * 1000;
 
+      const verificationUrl = path.join(
+        process.env.FRONTEND_URL,
+        "email-verification",
+        verificationToken,
+        auth._id.toString()
+      );
+
+      const message = await sendEmail(
+        name,
+        email,
+        "Verify your email address",
+        verificationUrl,
+        "emailVerification.ejs"
+      );
+      if (!message.messageId) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.INTERNAL_SERVER_ERROR,
+          "Failed to send verification email"
+        );
+      }
+
+      await authModel.findByIdAndUpdate(auth._id, {
+        verificationToken: verificationToken,
+        verificationTokenExpire: verificationTokenExpire,
+        verificationEmailSent: 1,
+      });
+
       return sendResponse(
         res,
         HTTP_STATUS.OK,
-        "Successfully signed up",
-        filteredInfo
+        "We've sent you an email to verify your email address. Please check your email and complete the verification process."
       );
     } catch (error) {
-      console.log(error);
+      console.error(error);
       return sendResponse(
         res,
         HTTP_STATUS.INTERNAL_SERVER_ERROR,
@@ -183,6 +206,7 @@ class AuthController {
         );
       }
     } catch (error) {
+      console.error(error);
       // Returns an error
       return sendResponse(
         res,
@@ -289,6 +313,7 @@ class AuthController {
         "Something went wrong"
       );
     } catch (error) {
+      console.error(error);
       // Returns an error
       return sendResponse(
         res,

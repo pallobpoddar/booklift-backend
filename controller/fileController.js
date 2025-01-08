@@ -1,7 +1,7 @@
 const path = require("path");
 const fileTypes = require("../constants/fileTypes");
 const HTTP_STATUS = require("../constants/statusCodes");
-const sendResponse = require("../util/commonResponse");
+const sendResponse = require("../utils/commonResponse");
 const fs = require("fs");
 
 class fileController {

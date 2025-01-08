@@ -5,7 +5,7 @@ const authController = require("../controller/authController");
 const handleValidationErrors = require("../middleware/validationMiddleware");
 
 authRoutes.post("/signup", authValidator.signup, handleValidationErrors, authController.signup);
-authRoutes.post("/signin", authValidator.signin, authController.signin);
+authRoutes.post("/signin", authValidator.signin, handleValidationErrors, authController.signin);
 authRoutes.post(
 	"/forgot-password",
 	authValidator.forgotPassword,
