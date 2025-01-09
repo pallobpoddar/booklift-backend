@@ -4,12 +4,28 @@ const authValidator = require("../middleware/authValidation");
 const authController = require("../controller/authController");
 const handleValidationErrors = require("../middleware/validationMiddleware");
 
-authRoutes.post("/signup", authValidator.signup, handleValidationErrors, authController.signup);
-authRoutes.patch("/signin", authValidator.signin, handleValidationErrors, authController.signin);
 authRoutes.post(
-	"/forgot-password",
-	authValidator.forgotPassword,
-	authController.sendForgotPasswordEmail
+  "/signup",
+  authValidator.signup,
+  handleValidationErrors,
+  authController.signup
+);
+authRoutes.patch(
+  "/signin",
+  authValidator.signin,
+  handleValidationErrors,
+  authController.signin
+);
+authRoutes.patch(
+  "/verify-email/:token/:id",
+  authValidator.verifyEmail,
+  handleValidationErrors,
+  authController.verifyEmail
+);
+authRoutes.post(
+  "/forgot-password",
+  authValidator.forgotPassword,
+  authController.sendForgotPasswordEmail
 );
 authRoutes.post("/reset-password", authController.resetPassword);
 

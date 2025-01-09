@@ -1,4 +1,4 @@
-const { body } = require("express-validator");
+const { body, param } = require("express-validator");
 
 const authValidator = {
   signup: [
@@ -72,6 +72,24 @@ const authValidator = {
       .bail()
       .isLength({ max: 20 })
       .withMessage("Incorrect email or password"),
+  ],
+
+  verifyEmail: [
+    param("token")
+      .exists()
+      .withMessage("Token is required")
+      .bail()
+      .isLength({ min: 64, max: 64 })
+      .withMessage("Invalid token")
+      .bail()
+      .matches(/^[a-f0-9]{64}$/i)
+      .withMessage("Invalid token"),
+    param("id")
+      .exists()
+      .withMessage("Id is required")
+      .bail()
+      .isMongoId()
+      .withMessage("Invalid id"),
   ],
 
   forgotPassword: [

@@ -94,7 +94,7 @@ class AuthController {
         );
       }
 
-      await authModel.findByIdAndUpdate(auth._id, {
+      await authModel.findByIdAndUpdate(auth[0]._id, {
         $set: {
           verificationToken: verificationToken,
           verificationTokenExpire: verificationTokenExpire,
@@ -231,10 +231,7 @@ class AuthController {
     try {
       const { token, id } = req.params;
 
-      const auth = await authModel
-        .findById(id)
-        .populate("user", "-createdAt -updatedAt -__v")
-        .select("-email -createdAt -updatedAt -__v");
+      const auth = await authModel.findById(id);
       if (!auth || auth.verificationToken !== token) {
         return sendResponse(
           res,
@@ -251,22 +248,41 @@ class AuthController {
         );
       }
 
-      await authModel.findByIdAndUpdate(id, {
-        isVerified: true,
-      });
+      if (auth.isVerified) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.CONFLICT,
+          "Email is already verified. Please sign in."
+        );
+      }
+
+      const updatedAuth = await authModel
+        .findByIdAndUpdate(
+          id,
+          {
+            $set: {
+              isVerified: true,
+              verificationToken: null,
+              verificationTokenExpire: null,
+              verificationEmailSent: 0,
+            },
+          },
+          { new: true }
+        )
+        .populate("user");
 
       const data = {
-        id: auth._id,
-        name: auth.user.name,
-        email: auth.user.email,
-        phone: auth.user.phone,
-        address: auth.user.address,
-        isAdmin: auth.isAdmin,
-        isVerified: auth.isVerified,
+        id: updatedAuth._id,
+        name: updatedAuth.user.name,
+        email: updatedAuth.user.email,
+        phone: updatedAuth.user.phone,
+        address: updatedAuth.user.address,
+        isAdmin: updatedAuth.isAdmin,
+        isVerified: updatedAuth.isVerified,
       };
 
-      const accessToken = generateAccessToken({ id: auth._id });
-      const refreshToken = generateRefreshToken({ id: auth._id });
+      const accessToken = generateAccessToken({ id: updatedAuth._id });
+      const refreshToken = generateRefreshToken({ id: updatedAuth._id });
 
       res.cookie("accessToken", accessToken, {
         httpOnly: true,
