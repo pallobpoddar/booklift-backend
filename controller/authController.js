@@ -32,18 +32,41 @@ class AuthController {
         );
       }
 
-      const user = await userModel.create({
-        name: name,
-        email: email,
-      });
+      const session = await mongoose.startSession();
+      session.startTransaction();
+      let auth;
 
-      const hashedPassword = await hashPassword(password);
+      try {
+        const user = await userModel.create(
+          [
+            {
+              name: name,
+              email: email,
+            },
+          ],
+          { session }
+        );
 
-      const auth = await authModel.create({
-        email: email,
-        password: hashedPassword,
-        user: user._id,
-      });
+        const hashedPassword = await hashPassword(password);
+
+        auth = await authModel.create(
+          [
+            {
+              email: email,
+              password: hashedPassword,
+              user: user[0]._id,
+            },
+          ],
+          { session }
+        );
+
+        await session.commitTransaction();
+      } catch (error) {
+        console.log(error);
+        await session.abortTransaction();
+      } finally {
+        session.endSession();
+      }
 
       const verificationToken = crypto.randomBytes(32).toString("hex");
       const verificationTokenExpire = Date.now() + 60 * 60 * 1000;
@@ -52,7 +75,7 @@ class AuthController {
         process.env.FRONTEND_URL,
         "email-verification",
         verificationToken,
-        auth._id.toString()
+        auth[0]._id.toString()
       );
 
       const message = await sendEmail(
@@ -62,6 +85,7 @@ class AuthController {
         verificationUrl,
         "emailVerification.ejs"
       );
+
       if (!message.messageId) {
         return sendResponse(
           res,
@@ -71,14 +95,16 @@ class AuthController {
       }
 
       await authModel.findByIdAndUpdate(auth._id, {
-        verificationToken: verificationToken,
-        verificationTokenExpire: verificationTokenExpire,
-        verificationEmailSent: 1,
+        $set: {
+          verificationToken: verificationToken,
+          verificationTokenExpire: verificationTokenExpire,
+          verificationEmailSent: 1,
+        },
       });
 
       return sendResponse(
         res,
-        HTTP_STATUS.OK,
+        HTTP_STATUS.CREATED,
         "We've sent you an email to verify your email address. Please check your email and complete the verification process."
       );
     } catch (error) {
@@ -109,10 +135,13 @@ class AuthController {
 
       const checkPassword = await comparePasswords(password, auth.password);
       if (!checkPassword) {
-        auth.signInFailed += 1;
-
         if (auth.signInFailed < 5) {
-          auth.save();
+          await authModel.findByIdAndUpdate(auth._id, {
+            $inc: {
+              signInFailed: 1,
+            },
+          });
+
           return sendResponse(
             res,
             HTTP_STATUS.UNAUTHORIZED,
@@ -121,14 +150,15 @@ class AuthController {
         }
 
         const blockedDuration = 60 * 60 * 1000;
-        auth.signInBlockedUntil = new Date(Date.now() + blockedDuration);
-        auth.save();
 
-        return sendResponse(
-          res,
-          HTTP_STATUS.FORBIDDEN,
-          "You have exceeded the maximum number of requests per hour"
-        );
+        await authModel.findByIdAndUpdate(auth._id, {
+          $set: {
+            signInBlockedUntil: new Date(Date.now() + blockedDuration),
+          },
+          $inc: {
+            signInFailed: 1,
+          },
+        });
       }
 
       if (
@@ -137,15 +167,26 @@ class AuthController {
       ) {
         return sendResponse(
           res,
-          HTTP_STATUS.FORBIDDEN,
+          HTTP_STATUS.TOO_MANY_REQUESTS,
           "You have exceeded the maximum number of requests per hour"
         );
       }
 
+      if (!auth.isVerified) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.UNAUTHORIZED,
+          "Please verify your email"
+        );
+      }
+
       if (auth.signInFailed > 0) {
-        auth.signInFailed = 0;
-        auth.signInBlockedUntil = null;
-        auth.save();
+        await authModel.findByIdAndUpdate(auth._id, {
+          $set: {
+            signInFailed: 0,
+            signInBlockedUntil: null,
+          },
+        });
       }
 
       const data = {
@@ -158,8 +199,8 @@ class AuthController {
         isVerified: auth.isVerified,
       };
 
-      const accessToken = generateAccessToken({id: auth._id});
-      const refreshToken = generateRefreshToken({id: auth._id});
+      const accessToken = generateAccessToken({ id: auth._id });
+      const refreshToken = generateRefreshToken({ id: auth._id });
 
       res.cookie("accessToken", accessToken, {
         httpOnly: true,
@@ -175,6 +216,77 @@ class AuthController {
       });
 
       return sendResponse(res, HTTP_STATUS.OK, "Successfully signed in", data);
+    } catch (error) {
+      console.error(error);
+      return sendResponse(
+        res,
+        HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        "Internal server error",
+        "Server error"
+      );
+    }
+  }
+
+  async verifyEmail(req, res) {
+    try {
+      const { token, id } = req.params;
+
+      const auth = await authModel
+        .findById(id)
+        .populate("user", "-createdAt -updatedAt -__v")
+        .select("-email -createdAt -updatedAt -__v");
+      if (!auth || auth.verificationToken !== token) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.UNAUTHORIZED,
+          "Invalid request. Please try again."
+        );
+      }
+
+      if (auth.verificationTokenExpire < Date.now()) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.GONE,
+          "Token is expired. Please try again."
+        );
+      }
+
+      await authModel.findByIdAndUpdate(id, {
+        isVerified: true,
+      });
+
+      const data = {
+        id: auth._id,
+        name: auth.user.name,
+        email: auth.user.email,
+        phone: auth.user.phone,
+        address: auth.user.address,
+        isAdmin: auth.isAdmin,
+        isVerified: auth.isVerified,
+      };
+
+      const accessToken = generateAccessToken({ id: auth._id });
+      const refreshToken = generateRefreshToken({ id: auth._id });
+
+      res.cookie("accessToken", accessToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        maxAge: 15 * 60 * 1000,
+      });
+      res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      return sendResponse(
+        res,
+        HTTP_STATUS.OK,
+        "Email is successfully verified. You are being redirected to the home page.",
+        data
+      );
     } catch (error) {
       console.error(error);
       return sendResponse(
@@ -392,5 +504,4 @@ class AuthController {
   }
 }
 
-// Exports the authentication controller
 module.exports = new AuthController();
