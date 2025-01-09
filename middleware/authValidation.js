@@ -53,13 +53,13 @@ const authValidator = {
   signin: [
     body("email")
       .exists()
-      .withMessage("Email is required")
+      .withMessage("Incorrect email or password")
       .bail()
       .isEmail()
-      .withMessage("Invalid email"),
+      .withMessage("Incorrect email or password"),
     body("password")
       .exists()
-      .withMessage("Password is required")
+      .withMessage("Incorrect email or password")
       .bail()
       .isStrongPassword({
         minLength: 8,
@@ -68,12 +68,10 @@ const authValidator = {
         minSymbols: 1,
         minNumbers: 1,
       })
-      .withMessage(
-        "Password must contain at least one lowercase letter, one uppercase letter, one number, one special character and be at least 8 characters long"
-      )
+      .withMessage("Incorrect email or password")
       .bail()
       .isLength({ max: 20 })
-      .withMessage("Character limit exceeded"),
+      .withMessage("Incorrect email or password"),
   ],
 
   forgotPassword: [

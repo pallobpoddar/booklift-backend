@@ -1,7 +1,7 @@
-const dotEnv = require("dotenv");
+const dotenv = require("dotenv");
 const jwt = require("jsonwebtoken");
 
-dotEnv.config();
+dotenv.config();
 
 const generateAccessToken = (payload) => {
   const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET;

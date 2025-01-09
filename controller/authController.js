@@ -148,19 +148,18 @@ class AuthController {
         auth.save();
       }
 
-      const authObject = auth.toObject();
       const data = {
-        id: authObject._id,
-        name: authObject.user.name,
-        email: authObject.user.email,
-        phone: authObject.user.phone,
-        address: authObject.user.address,
-        isAdmin: authObject.isAdmin,
-        isVerified: authObject.isVerified,
+        id: auth._id,
+        name: auth.user.name,
+        email: auth.user.email,
+        phone: auth.user.phone,
+        address: auth.user.address,
+        isAdmin: auth.isAdmin,
+        isVerified: auth.isVerified,
       };
 
-      const accessToken = generateAccessToken(auth._id);
-      const refreshToken = generateRefreshToken(auth._id);
+      const accessToken = generateAccessToken({id: auth._id});
+      const refreshToken = generateRefreshToken({id: auth._id});
 
       res.cookie("accessToken", accessToken, {
         httpOnly: true,
