@@ -98,7 +98,6 @@ class AuthController {
         $set: {
           verificationToken: verificationToken,
           verificationTokenExpire: verificationTokenExpire,
-          verificationEmailSent: 1,
         },
       });
 
@@ -232,6 +231,14 @@ class AuthController {
       const { token, id } = req.params;
 
       const auth = await authModel.findById(id);
+      if (auth.isVerified) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.CONFLICT,
+          "Email is already verified. Please sign in."
+        );
+      }
+      
       if (!auth || auth.verificationToken !== token) {
         return sendResponse(
           res,
@@ -248,14 +255,6 @@ class AuthController {
         );
       }
 
-      if (auth.isVerified) {
-        return sendResponse(
-          res,
-          HTTP_STATUS.CONFLICT,
-          "Email is already verified. Please sign in."
-        );
-      }
-
       const updatedAuth = await authModel
         .findByIdAndUpdate(
           id,
@@ -264,7 +263,6 @@ class AuthController {
               isVerified: true,
               verificationToken: null,
               verificationTokenExpire: null,
-              verificationEmailSent: 0,
             },
           },
           { new: true }

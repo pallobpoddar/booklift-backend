@@ -17,7 +17,7 @@ authRoutes.patch(
   authController.signin
 );
 authRoutes.patch(
-  "/verify-email/:token/:id",
+  "/email-verification/:token/:id",
   authValidator.verifyEmail,
   handleValidationErrors,
   authController.verifyEmail
