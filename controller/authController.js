@@ -235,10 +235,11 @@ class AuthController {
         return sendResponse(
           res,
           HTTP_STATUS.CONFLICT,
-          "Email is already verified. Please sign in."
+          "Email is already verified. You are being redirected to the home page.",
+          {status: 409}
         );
       }
-      
+
       if (!auth || auth.verificationToken !== token) {
         return sendResponse(
           res,
