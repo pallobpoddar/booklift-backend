@@ -22,6 +22,12 @@ authRoutes.patch(
   handleValidationErrors,
   authController.verifyEmail
 );
+authRoutes.patch(
+  "/email-verification-resend/:id",
+  authValidator.resendVerificationEmail,
+  handleValidationErrors,
+  authController.resendVerificationEmail
+);
 authRoutes.post(
   "/forgot-password",
   authValidator.forgotPassword,

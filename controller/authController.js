@@ -120,10 +120,7 @@ class AuthController {
     try {
       const { email, password } = req.body;
 
-      const auth = await authModel
-        .findOne({ email: email })
-        .populate("user", "-createdAt -updatedAt -__v")
-        .select("-email -createdAt -updatedAt -__v");
+      const auth = await authModel.findOne({ email: email }).populate("user");
       if (!auth) {
         return sendResponse(
           res,
@@ -231,20 +228,23 @@ class AuthController {
       const { token, id } = req.params;
 
       const auth = await authModel.findById(id);
+      if (
+        !auth ||
+        (auth.verificationToken && auth.verificationToken !== token)
+      ) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.UNAUTHORIZED,
+          "Invalid request. Please try again."
+        );
+      }
+
       if (auth.isVerified) {
         return sendResponse(
           res,
           HTTP_STATUS.CONFLICT,
           "Email is already verified. You are being redirected to the home page.",
-          {status: 409}
-        );
-      }
-
-      if (!auth || auth.verificationToken !== token) {
-        return sendResponse(
-          res,
-          HTTP_STATUS.UNAUTHORIZED,
-          "Invalid request. Please try again."
+          { status: 409 }
         );
       }
 
@@ -301,6 +301,81 @@ class AuthController {
         HTTP_STATUS.OK,
         "Email is successfully verified. You are being redirected to the home page.",
         data
+      );
+    } catch (error) {
+      console.error(error);
+      return sendResponse(
+        res,
+        HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        "Internal server error",
+        "Server error"
+      );
+    }
+  }
+
+  async resendVerificationEmail(req, res) {
+    try {
+      const { id } = req.params;
+
+      const auth = await authModel.findById(id).populate("user");
+      if (!auth) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.UNAUTHORIZED,
+          "Invalid request. Please try again."
+        );
+      }
+
+      if (auth.isVerified) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.CONFLICT,
+          "Email is already verified. You are being redirected to the home page.",
+          { status: 409 }
+        );
+      }
+
+      if (auth.verificationTokenExpire >= Date.now()) {
+        return sendResponse(res, HTTP_STATUS.CONFLICT, "Email is already sent");
+      }
+
+      const verificationToken = crypto.randomBytes(32).toString("hex");
+      const verificationTokenExpire = Date.now() + 60 * 60 * 1000;
+
+      const verificationUrl = path.join(
+        process.env.FRONTEND_URL,
+        "email-verification",
+        verificationToken,
+        id
+      );
+
+      const message = await sendEmail(
+        auth.user.name,
+        auth.email,
+        "Verify your email address",
+        verificationUrl,
+        "emailVerification.ejs"
+      );
+
+      if (!message.messageId) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.INTERNAL_SERVER_ERROR,
+          "Failed to send verification email"
+        );
+      }
+
+      await authModel.findByIdAndUpdate(id, {
+        $set: {
+          verificationToken: verificationToken,
+          verificationTokenExpire: verificationTokenExpire,
+        },
+      });
+
+      return sendResponse(
+        res,
+        HTTP_STATUS.OK,
+        "We've sent you an email to verify your email address. Please check your email and complete the verification process."
       );
     } catch (error) {
       console.error(error);

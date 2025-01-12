@@ -92,6 +92,15 @@ const authValidator = {
       .withMessage("Invalid id"),
   ],
 
+  resendVerificationEmail: [
+    param("id")
+      .exists()
+      .withMessage("Id is required")
+      .bail()
+      .isMongoId()
+      .withMessage("Invalid id"),
+  ],
+
   forgotPassword: [
     body("email")
       .exists()
