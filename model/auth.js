@@ -35,8 +35,16 @@ const authSchema = new mongoose.Schema(
       type: String || null,
       default: null,
     },
-    verificationTokenExpire: {
+    verificationTokenExpiryDate: {
       type: Date || null,
+      default: null,
+    },
+    numberOfVerificationEmailSent: {
+      type: Number,
+      default: 0,
+    },
+    verificationEmailBlockedUntil: {
+      type: Date,
       default: null,
     },
     signInFailed: {

@@ -11,6 +11,7 @@ const transporter = require("../config/mail");
 const ejsRenderFile = promisify(ejs.renderFile);
 const crypto = require("crypto");
 const { default: mongoose } = require("mongoose");
+const jwt = require("jsonwebtoken");
 const { hashPassword, comparePasswords } = require("../utils/passwordHashing");
 const { sendEmail } = require("../utils/emailSending");
 const {
@@ -69,7 +70,7 @@ class AuthController {
       }
 
       const verificationToken = crypto.randomBytes(32).toString("hex");
-      const verificationTokenExpire = Date.now() + 60 * 60 * 1000;
+      const verificationTokenExpiryDate = Date.now() + 60 * 60 * 1000;
 
       const verificationUrl = path.join(
         process.env.FRONTEND_URL,
@@ -97,7 +98,7 @@ class AuthController {
       await authModel.findByIdAndUpdate(auth[0]._id, {
         $set: {
           verificationToken: verificationToken,
-          verificationTokenExpire: verificationTokenExpire,
+          verificationTokenExpiryDate: verificationTokenExpiryDate,
         },
       });
 
@@ -195,8 +196,8 @@ class AuthController {
         isVerified: auth.isVerified,
       };
 
-      const accessToken = generateAccessToken({ id: auth._id });
-      const refreshToken = generateRefreshToken({ id: auth._id });
+      const accessToken = generateAccessToken({ sub: auth._id });
+      const refreshToken = generateRefreshToken({ sub: auth._id });
 
       res.cookie("accessToken", accessToken, {
         httpOnly: true,
@@ -219,6 +220,53 @@ class AuthController {
         HTTP_STATUS.INTERNAL_SERVER_ERROR,
         "Internal server error",
         "Server error"
+      );
+    }
+  }
+
+  async refreshToken(req, res) {
+    try {
+      const refreshToken = req.cookies.refreshToken;
+      if (!refreshToken) {
+        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
+      }
+
+      const decoded = jwt.verify(
+        refreshToken,
+        process.env.REFRESH_TOKEN_SECRET
+      );
+      if (decoded) {
+        const accessToken = generateAccessToken({ sub: decoded.sub });
+        res.cookie("accessToken", accessToken, {
+          httpOnly: true,
+          secure: true,
+          sameSite: "none",
+          maxAge: 15 * 60 * 1000,
+        });
+        return sendResponse(
+          res,
+          HTTP_STATUS.OK,
+          "Successfully refreshed token"
+        );
+      }
+    } catch (error) {
+      console.error(error);
+      if (error instanceof jwt.TokenExpiredError) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.UNAUTHORIZED,
+          "Please sign in again"
+        );
+      }
+
+      if (error instanceof jwt.JsonWebTokenError) {
+        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
+      }
+
+      return sendResponse(
+        res,
+        HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        "Internal server error"
       );
     }
   }
@@ -248,7 +296,7 @@ class AuthController {
         );
       }
 
-      if (auth.verificationTokenExpire < Date.now()) {
+      if (auth.verificationTokenExpiryDate < Date.now()) {
         return sendResponse(
           res,
           HTTP_STATUS.GONE,
@@ -263,7 +311,7 @@ class AuthController {
             $set: {
               isVerified: true,
               verificationToken: null,
-              verificationTokenExpire: null,
+              verificationTokenExpiryDate: null,
             },
           },
           { new: true }
@@ -319,11 +367,7 @@ class AuthController {
 
       const auth = await authModel.findById(id).populate("user");
       if (!auth) {
-        return sendResponse(
-          res,
-          HTTP_STATUS.UNAUTHORIZED,
-          "Invalid request. Please try again."
-        );
+        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
       }
 
       if (auth.isVerified) {
@@ -335,12 +379,25 @@ class AuthController {
         );
       }
 
-      if (auth.verificationTokenExpire >= Date.now()) {
-        return sendResponse(res, HTTP_STATUS.CONFLICT, "Email is already sent");
+      if (auth.numberOfVerificationEmailSent >= 5) {
+        await authModel.findByIdAndUpdate(id, {
+          $set: {
+            verificationEmailBlockedUntil: Date.now() + 60 * 60 * 1000,
+          },
+          $inc: {
+            numberOfVerificationEmailSent: 1,
+          },
+        });
+
+        return sendResponse(
+          res,
+          HTTP_STATUS.TOO_MANY_REQUESTS,
+          "You have exceeded the maximum number of requests per hour"
+        );
       }
 
       const verificationToken = crypto.randomBytes(32).toString("hex");
-      const verificationTokenExpire = Date.now() + 60 * 60 * 1000;
+      const verificationTokenExpiryDate = Date.now() + 60 * 60 * 1000;
 
       const verificationUrl = path.join(
         process.env.FRONTEND_URL,
@@ -368,7 +425,10 @@ class AuthController {
       await authModel.findByIdAndUpdate(id, {
         $set: {
           verificationToken: verificationToken,
-          verificationTokenExpire: verificationTokenExpire,
+          verificationTokenExpiryDate: verificationTokenExpiryDate,
+        },
+        $inc: {
+          numberOfVerificationEmailSent: 1,
         },
       });
 
@@ -382,8 +442,7 @@ class AuthController {
       return sendResponse(
         res,
         HTTP_STATUS.INTERNAL_SERVER_ERROR,
-        "Internal server error",
-        "Server error"
+        "Internal server error"
       );
     }
   }

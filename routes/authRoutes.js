@@ -16,6 +16,10 @@ authRoutes.patch(
   handleValidationErrors,
   authController.signin
 );
+authRoutes.get(
+  "/token-refresh",
+  authController.refreshToken
+);
 authRoutes.patch(
   "/email-verification/:token/:id",
   authValidator.verifyEmail,

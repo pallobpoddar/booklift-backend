@@ -6,6 +6,7 @@ const path = require("path");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const multer = require("multer");
+const cookieParser = require("cookie-parser");
 const HTTP_STATUS = require("./constants/statusCodes");
 const sendResponse = require("./utils/commonResponse");
 const authRouter = require("./routes/authRoutes");
@@ -27,7 +28,15 @@ const accessLogStream = fs.createWriteStream(
 dotenv.config();
 const port = process.env.PORT;
 
-app.use(cors());
+app.use(
+	cors({
+		origin: "*",
+		methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+		allowedHeaders: ["Content-Type", "Authorization"],
+		credentials: true,
+	})
+);
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.text());
 app.use(express.urlencoded({ extended: true }));
