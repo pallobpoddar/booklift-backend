@@ -218,8 +218,7 @@ class AuthController {
       return sendResponse(
         res,
         HTTP_STATUS.INTERNAL_SERVER_ERROR,
-        "Internal server error",
-        "Server error"
+        "Internal server error"
       );
     }
   }
@@ -379,20 +378,17 @@ class AuthController {
         );
       }
 
-      if (auth.numberOfVerificationEmailSent >= 5) {
+      if (auth.verificationEmailBlockedUntil > Date.now()) {
         await authModel.findByIdAndUpdate(id, {
           $set: {
             verificationEmailBlockedUntil: Date.now() + 60 * 60 * 1000,
-          },
-          $inc: {
-            numberOfVerificationEmailSent: 1,
           },
         });
 
         return sendResponse(
           res,
           HTTP_STATUS.TOO_MANY_REQUESTS,
-          "You have exceeded the maximum number of requests per hour"
+          "You've exceeded the maximum number of requests per hour"
         );
       }
 
