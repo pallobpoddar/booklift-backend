@@ -1,4 +1,3 @@
-const { validationResult } = require("express-validator");
 const sendResponse = require("../utils/commonResponse");
 const HTTP_STATUS = require("../constants/statusCodes");
 const userModel = require("../model/user");
@@ -132,10 +131,12 @@ class AuthController {
 
       const checkPassword = await comparePasswords(password, auth.password);
       if (!checkPassword) {
-        if (auth.signInFailed < 5) {
+        auth.signInFailed += 1;
+
+        if (auth.numberOfSigninFailed < 5) {
           await authModel.findByIdAndUpdate(auth._id, {
             $inc: {
-              signInFailed: 1,
+              numberOfSigninFailed: 1,
             },
           });
 
@@ -150,22 +151,25 @@ class AuthController {
 
         await authModel.findByIdAndUpdate(auth._id, {
           $set: {
-            signInBlockedUntil: new Date(Date.now() + blockedDuration),
+            signinBlockedUntil: Date.now() + blockedDuration,
           },
           $inc: {
-            signInFailed: 1,
+            numberOfSigninFailed: 1,
           },
         });
-      }
 
-      if (
-        auth.signInBlockedUntil &&
-        auth.signInBlockedUntil > new Date(Date.now())
-      ) {
         return sendResponse(
           res,
           HTTP_STATUS.TOO_MANY_REQUESTS,
-          "You have exceeded the maximum number of requests per hour"
+          "Too many requests. Please try again later."
+        );
+      }
+
+      if (auth.signinBlockedUntil && auth.signinBlockedUntil > Date.now()) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.TOO_MANY_REQUESTS,
+          "Too many requests. Please try again later."
         );
       }
 
@@ -177,11 +181,11 @@ class AuthController {
         );
       }
 
-      if (auth.signInFailed > 0) {
+      if (auth.numberOfSigninFailed > 0) {
         await authModel.findByIdAndUpdate(auth._id, {
           $set: {
-            signInFailed: 0,
-            signInBlockedUntil: null,
+            numberOfSigninFailed: 0,
+            signinBlockedUntil: null,
           },
         });
       }
@@ -378,7 +382,7 @@ class AuthController {
         );
       }
 
-      if (auth.verificationEmailBlockedUntil > Date.now()) {
+      if (auth.numberOfVerificationEmailSent >= 5) {
         await authModel.findByIdAndUpdate(id, {
           $set: {
             verificationEmailBlockedUntil: Date.now() + 60 * 60 * 1000,
@@ -388,7 +392,7 @@ class AuthController {
         return sendResponse(
           res,
           HTTP_STATUS.TOO_MANY_REQUESTS,
-          "You've exceeded the maximum number of requests per hour"
+          "You've exceeded the request limit"
         );
       }
 
@@ -445,60 +449,35 @@ class AuthController {
 
   async sendForgotPasswordEmail(req, res) {
     try {
-      // If the user provides invalid properties, it returns an error
-      const allowedProperties = ["email"];
-      const unexpectedProps = Object.keys(req.body).filter(
-        (key) => !allowedProperties.includes(key)
-      );
-      if (unexpectedProps.length > 0) {
-        return sendResponse(
-          res,
-          HTTP_STATUS.UNPROCESSABLE_ENTITY,
-          "Failed to reset password",
-          `Unexpected properties: ${unexpectedProps.join(", ")}`
-        );
-      }
-
-      // If the user provides invalid information, it returns an error
-      const validation = validationResult(req).array();
-      if (validation.length > 0) {
-        return sendResponse(
-          res,
-          HTTP_STATUS.UNPROCESSABLE_ENTITY,
-          "Failed to reset password",
-          validation
-        );
-      }
-
-      // Destructures necessary elements from request body
       const { email } = req.body;
 
-      // Populates user data from auth model and discards unnecessary fields
       const auth = await authModel
         .findOne({ email: email })
         .populate("user", "-createdAt -updatedAt -__v")
         .select("-email -createdAt -updatedAt -__v");
-
-      // If the user is not registered, it returns an error
       if (!auth) {
         return sendResponse(
           res,
           HTTP_STATUS.UNAUTHORIZED,
-          "User is not registered",
-          "Unauthorized"
+          "Email is not registered"
         );
       }
 
-      // Generates a random reset token using crypto
+      if (auth.numberOfForgotEmailSent >= 5) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.TOO_MANY_REQUESTS,
+          "You've exceeded the request limit. Please try again later."
+        );
+      }
+
       const resetToken = crypto.randomBytes(32).toString("hex");
 
-      // Saves the token, expired time and a boolean value inside the model
       auth.resetPasswordToken = resetToken;
       auth.resetPasswordExpire = Date.now() + 60 * 60 * 1000;
       auth.resetPassword = true;
       await auth.save();
 
-      // Creates the reset URL
       const resetURL = path.join(
         process.env.FRONTEND_URL,
         "reset-password",
@@ -506,7 +485,6 @@ class AuthController {
         auth._id.toString()
       );
 
-      // Creates the html body using ejs
       const htmlBody = await ejsRenderFile(
         path.join(__dirname, "..", "views", "forgotPassword.ejs"),
         {
@@ -515,7 +493,6 @@ class AuthController {
         }
       );
 
-      // Sets the mail attributes
       const result = await transporter.sendMail({
         from: "khonika@system.com",
         to: `${auth.user.name} ${email}`,
@@ -523,7 +500,6 @@ class AuthController {
         html: htmlBody,
       });
 
-      // If message id exists, it returns a success response
       if (result.messageId) {
         return sendResponse(
           res,
@@ -532,7 +508,6 @@ class AuthController {
         );
       }
 
-      // Otherwise, it returns an error
       return sendResponse(
         res,
         HTTP_STATUS.UNPROCESSABLE_ENTITY,
@@ -540,12 +515,10 @@ class AuthController {
       );
     } catch (error) {
       console.error(error);
-      // Returns an error
       return sendResponse(
         res,
         HTTP_STATUS.INTERNAL_SERVER_ERROR,
-        "Internal server error",
-        "Server error"
+        "Internal server error"
       );
     }
   }
