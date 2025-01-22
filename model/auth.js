@@ -39,14 +39,6 @@ const authSchema = new mongoose.Schema(
       type: Date || null,
       default: null,
     },
-    numberOfVerificationEmailSent: {
-      type: Number,
-      default: 0,
-    },
-    verificationEmailBlockedUntil: {
-      type: Date,
-      default: null,
-    },
     numberOfSigninFailed: {
       type: Number,
       default: 0,

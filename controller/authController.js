@@ -382,18 +382,12 @@ class AuthController {
         );
       }
 
-      if (auth.numberOfVerificationEmailSent >= 5) {
-        await authModel.findByIdAndUpdate(id, {
-          $set: {
-            verificationEmailBlockedUntil: Date.now() + 60 * 60 * 1000,
-          },
-        });
-
+      if (auth.verificationTokenExpiryDate > Date.now()) {
         return sendResponse(
           res,
-          HTTP_STATUS.TOO_MANY_REQUESTS,
-          "You've exceeded the request limit"
-        );
+          HTTP_STATUS.CONFLICT,
+          "Verification email is already sent. Please check your email."
+        )
       }
 
       const verificationToken = crypto.randomBytes(32).toString("hex");
@@ -403,7 +397,7 @@ class AuthController {
         process.env.FRONTEND_URL,
         "email-verification",
         verificationToken,
-        id
+        auth._id.toString()
       );
 
       const message = await sendEmail(
@@ -422,13 +416,10 @@ class AuthController {
         );
       }
 
-      await authModel.findByIdAndUpdate(id, {
+      await authModel.findByIdAndUpdate(auth._id, {
         $set: {
           verificationToken: verificationToken,
           verificationTokenExpiryDate: verificationTokenExpiryDate,
-        },
-        $inc: {
-          numberOfVerificationEmailSent: 1,
         },
       });
 
