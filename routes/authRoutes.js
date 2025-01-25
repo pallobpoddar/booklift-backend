@@ -16,10 +16,7 @@ authRoutes.patch(
   handleValidationErrors,
   authController.signin
 );
-authRoutes.get(
-  "/token-refresh",
-  authController.refreshToken
-);
+authRoutes.get("/token-refresh", authController.refreshToken);
 authRoutes.patch(
   "/email-verification/:token/:id",
   authValidator.verifyEmail,
@@ -32,11 +29,17 @@ authRoutes.patch(
   handleValidationErrors,
   authController.resendVerificationEmail
 );
-authRoutes.post(
+authRoutes.patch(
   "/forgot-password",
-  authValidator.forgotPassword,
-  authController.sendForgotPasswordEmail
+  authValidator.sendPasswordResetEmail,
+  handleValidationErrors,
+  authController.sendPasswordResetEmail
 );
-authRoutes.post("/reset-password", authController.resetPassword);
+authRoutes.patch(
+  "/password-reset/:token/:id",
+  authValidator.resetPassword,
+  handleValidationErrors,
+  authController.resetPassword
+);
 
 module.exports = authRoutes;

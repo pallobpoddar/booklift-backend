@@ -4,10 +4,6 @@ const userModel = require("../model/user");
 const authModel = require("../model/auth");
 const bcrypt = require("bcrypt");
 const path = require("path");
-const { promisify } = require("util");
-const ejs = require("ejs");
-const transporter = require("../config/mail");
-const ejsRenderFile = promisify(ejs.renderFile);
 const crypto = require("crypto");
 const { default: mongoose } = require("mongoose");
 const jwt = require("jsonwebtoken");
@@ -69,7 +65,7 @@ class AuthController {
       }
 
       const verificationToken = crypto.randomBytes(32).toString("hex");
-      const verificationTokenExpiryDate = Date.now() + 60 * 60 * 1000;
+      const verificationTokenValidityPeriod = 60 * 60 * 1000;
 
       const verificationUrl = path.join(
         process.env.FRONTEND_URL,
@@ -97,7 +93,8 @@ class AuthController {
       await authModel.findByIdAndUpdate(auth[0]._id, {
         $set: {
           verificationToken: verificationToken,
-          verificationTokenExpiryDate: verificationTokenExpiryDate,
+          verificationTokenExpiryDate:
+            Date.now() + verificationTokenValidityPeriod,
         },
       });
 
@@ -131,12 +128,12 @@ class AuthController {
 
       const checkPassword = await comparePasswords(password, auth.password);
       if (!checkPassword) {
-        auth.signInFailed += 1;
+        auth.numberOfFailedSignin += 1;
 
-        if (auth.numberOfSigninFailed < 5) {
+        if (auth.numberOfFailedSignin < 5) {
           await authModel.findByIdAndUpdate(auth._id, {
             $inc: {
-              numberOfSigninFailed: 1,
+              numberOfFailedSignin: 1,
             },
           });
 
@@ -147,14 +144,14 @@ class AuthController {
           );
         }
 
-        const blockedDuration = 60 * 60 * 1000;
+        const signinBlockedDuration = 60 * 60 * 1000;
 
         await authModel.findByIdAndUpdate(auth._id, {
           $set: {
-            signinBlockedUntil: Date.now() + blockedDuration,
+            signinBlockedUntil: Date.now() + signinBlockedDuration,
           },
           $inc: {
-            numberOfSigninFailed: 1,
+            numberOfFailedSignin: 1,
           },
         });
 
@@ -181,10 +178,10 @@ class AuthController {
         );
       }
 
-      if (auth.numberOfSigninFailed > 0) {
+      if (auth.numberOfFailedSignin > 0) {
         await authModel.findByIdAndUpdate(auth._id, {
           $set: {
-            numberOfSigninFailed: 0,
+            numberOfFailedSignin: 0,
             signinBlockedUntil: null,
           },
         });
@@ -279,15 +276,8 @@ class AuthController {
       const { token, id } = req.params;
 
       const auth = await authModel.findById(id);
-      if (
-        !auth ||
-        (auth.verificationToken && auth.verificationToken !== token)
-      ) {
-        return sendResponse(
-          res,
-          HTTP_STATUS.UNAUTHORIZED,
-          "Invalid request. Please try again."
-        );
+      if (!auth || auth.verificationToken !== token) {
+        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
       }
 
       if (auth.isVerified) {
@@ -370,15 +360,18 @@ class AuthController {
 
       const auth = await authModel.findById(id).populate("user");
       if (!auth) {
-        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
+        return sendResponse(
+          res,
+          HTTP_STATUS.UNAUTHORIZED,
+          "You're not authorized."
+        );
       }
 
       if (auth.isVerified) {
         return sendResponse(
           res,
-          HTTP_STATUS.CONFLICT,
-          "Email is already verified. You are being redirected to the home page.",
-          { status: 409 }
+          HTTP_STATUS.OK,
+          "Your email is already verified. You are being redirected to the home page."
         );
       }
 
@@ -386,12 +379,12 @@ class AuthController {
         return sendResponse(
           res,
           HTTP_STATUS.CONFLICT,
-          "Verification email is already sent. Please check your email."
-        )
+          "An email is already sent to verify your email address. Please check your email and complete the verification process."
+        );
       }
 
       const verificationToken = crypto.randomBytes(32).toString("hex");
-      const verificationTokenExpiryDate = Date.now() + 60 * 60 * 1000;
+      const verificationTokenValidityPeriod = 60 * 60 * 1000;
 
       const verificationUrl = path.join(
         process.env.FRONTEND_URL,
@@ -412,14 +405,15 @@ class AuthController {
         return sendResponse(
           res,
           HTTP_STATUS.INTERNAL_SERVER_ERROR,
-          "Failed to send verification email"
+          "We're unable to send password reset email at this moment. Please try again later."
         );
       }
 
       await authModel.findByIdAndUpdate(auth._id, {
         $set: {
           verificationToken: verificationToken,
-          verificationTokenExpiryDate: verificationTokenExpiryDate,
+          verificationTokenExpiryDate:
+            Date.now() + verificationTokenValidityPeriod,
         },
       });
 
@@ -438,71 +432,93 @@ class AuthController {
     }
   }
 
-  async sendForgotPasswordEmail(req, res) {
+  async sendPasswordResetEmail(req, res) {
     try {
       const { email } = req.body;
 
-      const auth = await authModel
-        .findOne({ email: email })
-        .populate("user", "-createdAt -updatedAt -__v")
-        .select("-email -createdAt -updatedAt -__v");
+      const auth = await authModel.findOne({ email: email }).populate("user");
       if (!auth) {
         return sendResponse(
           res,
           HTTP_STATUS.UNAUTHORIZED,
-          "Email is not registered"
+          "There's no user associated with this email. Please try with a different email."
         );
       }
 
-      if (auth.numberOfForgotEmailSent >= 5) {
+      if (auth.passwordResetBlockedUntil > Date.now()) {
         return sendResponse(
           res,
           HTTP_STATUS.TOO_MANY_REQUESTS,
-          "You've exceeded the request limit. Please try again later."
+          "You've reached the maximum number of resend attempts. Please try again later."
         );
       }
 
-      const resetToken = crypto.randomBytes(32).toString("hex");
+      auth.numberOfPasswordResetEmailSent += 1;
 
-      auth.resetPasswordToken = resetToken;
-      auth.resetPasswordExpire = Date.now() + 60 * 60 * 1000;
-      auth.resetPassword = true;
-      await auth.save();
+      if (
+        auth.numberOfPasswordResetEmailSent >= 5 &&
+        auth.numberOfPasswordResetEmailSent % 5 === 0
+      ) {
+        const passwordResetBlockedDuration = 60 * 60 * 1000;
 
-      const resetURL = path.join(
+        await authModel.findByIdAndUpdate(auth._id, {
+          $set: {
+            passwordResetBlockedUntil:
+              Date.now() + passwordResetBlockedDuration,
+          },
+          $inc: {
+            numberOfPasswordResetEmailSent: 1,
+          },
+        });
+
+        return sendResponse(
+          res,
+          HTTP_STATUS.TOO_MANY_REQUESTS,
+          "You've reached the maximum number of resend attempts. Please try again later."
+        );
+      }
+
+      const passwordResetToken = crypto.randomBytes(32).toString("hex");
+      const passwordResetTokenValidityPeriod = 60 * 60 * 1000;
+
+      const passwordResetUrl = path.join(
         process.env.FRONTEND_URL,
-        "reset-password",
-        resetToken,
+        "password-reset",
+        passwordResetToken,
         auth._id.toString()
       );
 
-      const htmlBody = await ejsRenderFile(
-        path.join(__dirname, "..", "views", "forgotPassword.ejs"),
-        {
-          name: auth.user.name,
-          resetURL: resetURL,
-        }
+      const message = await sendEmail(
+        auth.user.name,
+        auth.email,
+        "Reset password",
+        passwordResetUrl,
+        "passwordReset.ejs"
       );
 
-      const result = await transporter.sendMail({
-        from: "khonika@system.com",
-        to: `${auth.user.name} ${email}`,
-        subject: "Forgot password?",
-        html: htmlBody,
-      });
-
-      if (result.messageId) {
+      if (!message.messageId) {
         return sendResponse(
           res,
-          HTTP_STATUS.OK,
-          "Successfully requested for resetting password"
+          HTTP_STATUS.INTERNAL_SERVER_ERROR,
+          "We're unable to send password reset email at this moment. Please try again later."
         );
       }
 
+      await authModel.findByIdAndUpdate(auth._id, {
+        $set: {
+          passwordResetToken: passwordResetToken,
+          passwordResetTokenExpiryDate:
+            Date.now() + passwordResetTokenValidityPeriod,
+        },
+        $inc: {
+          numberOfPasswordResetEmailSent: 1,
+        },
+      });
+
       return sendResponse(
         res,
-        HTTP_STATUS.UNPROCESSABLE_ENTITY,
-        "Something went wrong"
+        HTTP_STATUS.OK,
+        "We've sent you an email to reset your password. Please check your email and complete the password reset process."
       );
     } catch (error) {
       console.error(error);
@@ -516,98 +532,56 @@ class AuthController {
 
   async resetPassword(req, res) {
     try {
-      const { token, id, newPassword, confirmPassword } = req.body;
+      const { token, id } = req.params;
+      const { newPassword } = req.body;
 
-      const auth = await authModel.findById({
-        _id: id,
-      });
-      if (!auth) {
-        return sendResponse(res, HTTP_STATUS.NOT_FOUND, "Invalid request");
-      }
-
-      if (auth.resetPasswordExpire < Date.now()) {
-        return sendResponse(res, HTTP_STATUS.GONE, "Expired request");
-      }
-
-      if (auth.resetPasswordToken !== token || auth.resetPassword === false) {
-        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Invalid token");
-      }
-
-      if (newPassword !== confirmPassword) {
+      const auth = await authModel.findById(id);
+      if (!auth || auth.passwordResetToken !== token) {
         return sendResponse(
           res,
-          HTTP_STATUS.NOT_FOUND,
-          "Passwords do not match"
+          HTTP_STATUS.UNAUTHORIZED,
+          "You're not authorized."
+        );
+      }
+
+      if (auth.passwordResetTokenExpiryDate < Date.now()) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.GONE,
+          "This token is expired. Please request a new one."
         );
       }
 
       if (await bcrypt.compare(newPassword, auth.password)) {
         return sendResponse(
           res,
-          HTTP_STATUS.NOT_FOUND,
-          "Password cannot be same as the old password"
+          HTTP_STATUS.CONFLICT,
+          "New password must be different from the previous password."
         );
       }
 
-      // Hashes the password
-      const hashedPassword = await bcrypt.hash(newPassword, 10).then((hash) => {
-        return hash;
-      });
+      const hashedPassword = await hashPassword(newPassword);
 
-      const result = await authModel.findOneAndUpdate(
-        { _id: new mongoose.Types.ObjectId(id) },
-        {
+      await authModel.findByIdAndUpdate(auth._id, {
+        $set: {
           password: hashedPassword,
-          resetPassword: false,
-          resetPasswordExpire: null,
-          resetPasswordToken: null,
-        }
-      );
-
-      if (result.isModified) {
-        return sendResponse(
-          res,
-          HTTP_STATUS.OK,
-          "Successfully updated password"
-        );
-      }
-    } catch (error) {
-      console.log(error);
-      // Returns an error
-      return sendResponse(
-        res,
-        HTTP_STATUS.INTERNAL_SERVER_ERROR,
-        "Internal server error",
-        "Server error"
-      );
-    }
-  }
-
-  async validatePasswordResetRequest(req, res) {
-    try {
-      const { token, id } = req.body;
-
-      const auth = await authModel.findOne({
-        _id: new mongoose.Types.ObjectId(id),
+          passwordResetToken: null,
+          passwordResetTokenExpiryDate: null,
+          passwordResetBlockedUntil: null,
+        },
       });
-      if (!auth) {
-        return sendResponse(res, HTTP_STATUS.NOT_FOUND, "Invalid request");
-      }
 
-      if (auth.resetPasswordExpire < Date.now()) {
-        return sendResponse(res, HTTP_STATUS.GONE, "Expired request");
-      }
-
-      if (auth.resetPasswordToken !== token || auth.resetPassword === false) {
-        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Invalid token");
-      }
-      return sendResponse(res, HTTP_STATUS.OK, "Request is still valid");
+      return sendResponse(
+        res,
+        HTTP_STATUS.OK,
+        "Successfully reset the password."
+      );
     } catch (error) {
-      console.log(error);
+      console.error(error);
       return sendResponse(
         res,
         HTTP_STATUS.INTERNAL_SERVER_ERROR,
-        "Something went wrong!"
+        "Internal server error"
       );
     }
   }

@@ -39,7 +39,7 @@ const authSchema = new mongoose.Schema(
       type: Date || null,
       default: null,
     },
-    numberOfSigninFailed: {
+    numberOfFailedSignin: {
       type: Number,
       default: 0,
     },
@@ -47,19 +47,19 @@ const authSchema = new mongoose.Schema(
       type: Date || null,
       default: null,
     },
-    numberOfForgotEmailSent: {
+    numberOfPasswordResetEmailSent: {
       type: Number,
       default: 0,
     },
-    resetPassword: {
-      type: Boolean,
-      default: false,
-    },
-    resetPasswordToken: {
+    passwordResetToken: {
       type: String || null,
       default: null,
     },
-    resetPasswordExpire: {
+    passwordResetTokenExpiryDate: {
+      type: Date || null,
+      default: null,
+    },
+    passwordResetBlockedUntil: {
       type: Date || null,
       default: null,
     },
