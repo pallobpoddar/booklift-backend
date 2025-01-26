@@ -1,7 +1,7 @@
 const { body, param } = require("express-validator");
 
 const authValidator = {
-  signup: [
+  signUp: [
     body("name")
       .exists()
       .withMessage("Name is required")
@@ -50,7 +50,7 @@ const authValidator = {
       }),
   ],
 
-  signin: [
+  signIn: [
     body("email")
       .exists()
       .withMessage("Incorrect email or password")

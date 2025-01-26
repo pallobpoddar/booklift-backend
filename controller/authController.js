@@ -3,7 +3,6 @@ const HTTP_STATUS = require("../constants/statusCodes");
 const userModel = require("../model/user");
 const authModel = require("../model/auth");
 const bcrypt = require("bcrypt");
-const path = require("path");
 const crypto = require("crypto");
 const { default: mongoose } = require("mongoose");
 const jwt = require("jsonwebtoken");
@@ -15,12 +14,12 @@ const {
 } = require("../utils/tokenGeneration");
 
 class AuthController {
-  async signup(req, res) {
+  async signUp(req, res) {
     try {
       const { name, email, password } = req.body;
 
-      const isEmailRegistered = await authModel.findOne({ email: email });
-      if (isEmailRegistered) {
+      const existingAuth = await authModel.findOne({ email: email });
+      if (existingAuth) {
         return sendResponse(
           res,
           HTTP_STATUS.CONFLICT,
@@ -30,10 +29,10 @@ class AuthController {
 
       const session = await mongoose.startSession();
       session.startTransaction();
-      let auth;
+      let auth, user;
 
       try {
-        const user = await userModel.create(
+        user = await userModel.create(
           [
             {
               name: name,
@@ -64,24 +63,14 @@ class AuthController {
         session.endSession();
       }
 
+      auth[0].user = user[0];
       const verificationToken = crypto.randomBytes(32).toString("hex");
-      const verificationTokenValidityPeriod = 60 * 60 * 1000;
-
-      const verificationUrl = path.join(
-        process.env.FRONTEND_URL,
-        "email-verification",
-        verificationToken,
-        auth[0]._id.toString()
-      );
 
       const message = await sendEmail(
-        name,
-        email,
-        "Verify your email address",
-        verificationUrl,
-        "emailVerification.ejs"
+        auth[0],
+        verificationToken,
+        "email-verification"
       );
-
       if (!message.messageId) {
         return sendResponse(
           res,
@@ -89,6 +78,8 @@ class AuthController {
           "Failed to send verification email"
         );
       }
+
+      const verificationTokenValidityPeriod = 60 * 60 * 1000;
 
       await authModel.findByIdAndUpdate(auth[0]._id, {
         $set: {
@@ -101,7 +92,7 @@ class AuthController {
       return sendResponse(
         res,
         HTTP_STATUS.CREATED,
-        "We've sent you an email to verify your email address. Please check your email and complete the verification process."
+        "An email has been sent to verify your email address"
       );
     } catch (error) {
       console.error(error);
@@ -113,7 +104,7 @@ class AuthController {
     }
   }
 
-  async signin(req, res) {
+  async signIn(req, res) {
     try {
       const { email, password } = req.body;
 
@@ -158,7 +149,7 @@ class AuthController {
         return sendResponse(
           res,
           HTTP_STATUS.TOO_MANY_REQUESTS,
-          "Too many requests. Please try again later."
+          "Too many requests. Please try again later"
         );
       }
 
@@ -166,7 +157,7 @@ class AuthController {
         return sendResponse(
           res,
           HTTP_STATUS.TOO_MANY_REQUESTS,
-          "Too many requests. Please try again later."
+          "Too many requests. Please try again later"
         );
       }
 
@@ -214,6 +205,29 @@ class AuthController {
       });
 
       return sendResponse(res, HTTP_STATUS.OK, "Successfully signed in", data);
+    } catch (error) {
+      console.error(error);
+      return sendResponse(
+        res,
+        HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        "Internal server error"
+      );
+    }
+  }
+
+  async signOut(req, res) {
+    try {
+      const accessToken = req.cookies.accessToken;
+      const refreshToken = req.cookies.refreshToken;
+
+      if (!accessToken || !refreshToken) {
+        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
+      }
+
+      res.clearCookie("accessToken");
+      res.clearCookie("refreshToken");
+
+      return sendResponse(res, HTTP_STATUS.OK, "Successfully signed out");
     } catch (error) {
       console.error(error);
       return sendResponse(
@@ -281,19 +295,14 @@ class AuthController {
       }
 
       if (auth.isVerified) {
-        return sendResponse(
-          res,
-          HTTP_STATUS.CONFLICT,
-          "Email is already verified. You are being redirected to the home page.",
-          { status: 409 }
-        );
+        return sendResponse(res, HTTP_STATUS.OK, "Email is already verified");
       }
 
       if (auth.verificationTokenExpiryDate < Date.now()) {
         return sendResponse(
           res,
           HTTP_STATUS.GONE,
-          "Token is expired. Please try again."
+          "Token is expired. Please try again"
         );
       }
 
@@ -340,7 +349,7 @@ class AuthController {
       return sendResponse(
         res,
         HTTP_STATUS.OK,
-        "Email is successfully verified. You are being redirected to the home page.",
+        "Successfully verified the email",
         data
       );
     } catch (error) {
@@ -360,54 +369,37 @@ class AuthController {
 
       const auth = await authModel.findById(id).populate("user");
       if (!auth) {
-        return sendResponse(
-          res,
-          HTTP_STATUS.UNAUTHORIZED,
-          "You're not authorized."
-        );
+        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
       }
 
       if (auth.isVerified) {
-        return sendResponse(
-          res,
-          HTTP_STATUS.OK,
-          "Your email is already verified. You are being redirected to the home page."
-        );
+        return sendResponse(res, HTTP_STATUS.OK, "Email is already verified");
       }
 
       if (auth.verificationTokenExpiryDate > Date.now()) {
         return sendResponse(
           res,
           HTTP_STATUS.CONFLICT,
-          "An email is already sent to verify your email address. Please check your email and complete the verification process."
+          "An email has already been sent to verify your email address"
         );
       }
 
       const verificationToken = crypto.randomBytes(32).toString("hex");
-      const verificationTokenValidityPeriod = 60 * 60 * 1000;
-
-      const verificationUrl = path.join(
-        process.env.FRONTEND_URL,
-        "email-verification",
-        verificationToken,
-        auth._id.toString()
-      );
 
       const message = await sendEmail(
-        auth.user.name,
-        auth.email,
-        "Verify your email address",
-        verificationUrl,
-        "emailVerification.ejs"
+        auth,
+        verificationToken,
+        "email-verification"
       );
-
       if (!message.messageId) {
         return sendResponse(
           res,
           HTTP_STATUS.INTERNAL_SERVER_ERROR,
-          "We're unable to send password reset email at this moment. Please try again later."
+          "Failed to send verification email"
         );
       }
+
+      const verificationTokenValidityPeriod = 60 * 60 * 1000;
 
       await authModel.findByIdAndUpdate(auth._id, {
         $set: {
@@ -420,7 +412,7 @@ class AuthController {
       return sendResponse(
         res,
         HTTP_STATUS.OK,
-        "We've sent you an email to verify your email address. Please check your email and complete the verification process."
+        "An email has been sent to verify your email address"
       );
     } catch (error) {
       console.error(error);
@@ -441,7 +433,7 @@ class AuthController {
         return sendResponse(
           res,
           HTTP_STATUS.UNAUTHORIZED,
-          "There's no user associated with this email. Please try with a different email."
+          "Email is not registered"
         );
       }
 
@@ -449,7 +441,7 @@ class AuthController {
         return sendResponse(
           res,
           HTTP_STATUS.TOO_MANY_REQUESTS,
-          "You've reached the maximum number of resend attempts. Please try again later."
+          "Too many requests. Please try again later"
         );
       }
 
@@ -474,35 +466,27 @@ class AuthController {
         return sendResponse(
           res,
           HTTP_STATUS.TOO_MANY_REQUESTS,
-          "You've reached the maximum number of resend attempts. Please try again later."
+          "Too many requests. Please try again later"
         );
       }
 
       const passwordResetToken = crypto.randomBytes(32).toString("hex");
-      const passwordResetTokenValidityPeriod = 60 * 60 * 1000;
-
-      const passwordResetUrl = path.join(
-        process.env.FRONTEND_URL,
-        "password-reset",
-        passwordResetToken,
-        auth._id.toString()
-      );
 
       const message = await sendEmail(
-        auth.user.name,
-        auth.email,
-        "Reset password",
-        passwordResetUrl,
-        "passwordReset.ejs"
+        auth,
+        passwordResetToken,
+        "password-reset",
       );
 
       if (!message.messageId) {
         return sendResponse(
           res,
           HTTP_STATUS.INTERNAL_SERVER_ERROR,
-          "We're unable to send password reset email at this moment. Please try again later."
+          "Failed to send password reset email"
         );
       }
+
+      const passwordResetTokenValidityPeriod = 60 * 60 * 1000;
 
       await authModel.findByIdAndUpdate(auth._id, {
         $set: {
@@ -518,7 +502,7 @@ class AuthController {
       return sendResponse(
         res,
         HTTP_STATUS.OK,
-        "We've sent you an email to reset your password. Please check your email and complete the password reset process."
+        "An email has been sent to reset your password"
       );
     } catch (error) {
       console.error(error);
@@ -537,18 +521,14 @@ class AuthController {
 
       const auth = await authModel.findById(id);
       if (!auth || auth.passwordResetToken !== token) {
-        return sendResponse(
-          res,
-          HTTP_STATUS.UNAUTHORIZED,
-          "You're not authorized."
-        );
+        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
       }
 
       if (auth.passwordResetTokenExpiryDate < Date.now()) {
         return sendResponse(
           res,
           HTTP_STATUS.GONE,
-          "This token is expired. Please request a new one."
+          "Token is expired. Please try again"
         );
       }
 
@@ -556,7 +536,7 @@ class AuthController {
         return sendResponse(
           res,
           HTTP_STATUS.CONFLICT,
-          "New password must be different from the previous password."
+          "New password must be different from the previous password"
         );
       }
 
@@ -574,7 +554,7 @@ class AuthController {
       return sendResponse(
         res,
         HTTP_STATUS.OK,
-        "Successfully reset the password."
+        "Successfully reset the password"
       );
     } catch (error) {
       console.error(error);

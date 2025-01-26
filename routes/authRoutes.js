@@ -6,36 +6,37 @@ const handleValidationErrors = require("../middleware/validationMiddleware");
 
 authRoutes.post(
   "/signup",
-  authValidator.signup,
+  authValidator.signUp,
   handleValidationErrors,
-  authController.signup
+  authController.signUp
 );
-authRoutes.patch(
+authRoutes.post(
   "/signin",
-  authValidator.signin,
+  authValidator.signIn,
   handleValidationErrors,
-  authController.signin
+  authController.signIn
 );
-authRoutes.get("/token-refresh", authController.refreshToken);
-authRoutes.patch(
+authRoutes.delete("/signout", authController.signOut);
+authRoutes.post("/token-refresh", authController.refreshToken);
+authRoutes.post(
   "/email-verification/:token/:id",
   authValidator.verifyEmail,
   handleValidationErrors,
   authController.verifyEmail
 );
-authRoutes.patch(
+authRoutes.post(
   "/email-verification-resend/:id",
   authValidator.resendVerificationEmail,
   handleValidationErrors,
   authController.resendVerificationEmail
 );
-authRoutes.patch(
+authRoutes.post(
   "/forgot-password",
   authValidator.sendPasswordResetEmail,
   handleValidationErrors,
   authController.sendPasswordResetEmail
 );
-authRoutes.patch(
+authRoutes.post(
   "/password-reset/:token/:id",
   authValidator.resetPassword,
   handleValidationErrors,
