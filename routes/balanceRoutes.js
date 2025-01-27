@@ -9,7 +9,7 @@
 const express = require("express");
 const balanceRoutes = express();
 const balanceValidator = require("../middleware/balanceValidation");
-const balanceController = require("../controller/balanceController");
+const balanceController = require("../controllers/balanceController");
 const { isAuthenticated } = require("../middleware/tokenValidation");
 
 balanceRoutes.post(

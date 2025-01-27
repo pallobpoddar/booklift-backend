@@ -9,7 +9,7 @@
 const express = require("express");
 const cartRoutes = express();
 const cartValidator = require("../middleware/cartValidation");
-const cartController = require("../controller/cartController");
+const cartController = require("../controllers/cartController");
 const { isAuthenticated } = require("../middleware/tokenValidation");
 
 // Sets up the routes, invokes corresponding APIs and cart controller methods

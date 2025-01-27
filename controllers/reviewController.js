@@ -9,9 +9,9 @@
 const { validationResult } = require("express-validator");
 const HTTP_STATUS = require("../constants/statusCodes");
 const sendResponse = require("../utils/commonResponse");
-const userModel = require("../model/user");
-const bookModel = require("../model/book");
-const reviewModel = require("../model/review");
+const userModel = require("../models/user");
+const bookModel = require("../models/book");
+const reviewModel = require("../models/review");
 
 /**
  * Represents a review controller

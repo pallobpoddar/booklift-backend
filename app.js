@@ -18,7 +18,7 @@ const cartRouter = require("./routes/cartRoutes");
 const reviewRouter = require("./routes/reviewRoutes");
 const balanceRouter = require("./routes/balanceRoutes");
 const fileRouter = require("./routes/fileRoutes");
-const databaseConnection = require("./config/database");
+const databaseConnection = require("./configs/database");
 
 const accessLogStream = fs.createWriteStream(
 	path.join(__dirname, "logFile.log"),
@@ -30,7 +30,7 @@ const port = process.env.PORT;
 
 app.use(
 	cors({
-		origin: "*",
+		origin: "http://localhost:5173",
 		methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 		allowedHeaders: ["Content-Type", "Authorization"],
 		credentials: true,
@@ -52,7 +52,7 @@ app.use((err, req, res, next) => {
 	next();
 });
 app.use(morgan("combined", { stream: accessLogStream }));
-app.use("/api/auths", authRouter);
+app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
 app.use("/api/books", bookRouter);
 app.use("/api/transactions", transactionRouter);

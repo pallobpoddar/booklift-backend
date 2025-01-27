@@ -8,30 +8,30 @@
 // Imports necessary modules
 const express = require("express");
 const userRoutes = express();
-const userController = require("../controller/userController");
+const userController = require("../controllers/userController");
 const userValidator = require("../middleware/userValidation");
-const upload = require("../config/files");
+const upload = require("../configs/files");
 const {
-	isAuthenticated,
-	isAuthorized,
+  isAuthenticated,
+  isAuthorized,
 } = require("../middleware/tokenValidation");
 
 // Sets up the routes, invokes corresponding APIs and user controller methods
 userRoutes.get("/all", isAuthenticated, isAuthorized, userController.getAll);
 userRoutes.patch(
-	"/update-one-by-id/:id",
-	isAuthenticated,
-	isAuthorized,
-	upload.single("image"),
-	userValidator.userUpdate,
-	userController.updateOneByID
+  "/update-one-by-id/:id",
+  isAuthenticated,
+  isAuthorized,
+  upload.single("image"),
+  userValidator.userUpdate,
+  userController.updateOneByID
 );
 userRoutes.delete(
-	"/delete-one-by-id/:id",
-	isAuthenticated,
-	isAuthorized,
-	userValidator.userDelete,
-	userController.deleteOneByID
+  "/delete-one-by-id/:id",
+  isAuthenticated,
+  isAuthorized,
+  userValidator.userDelete,
+  userController.deleteOneByID
 );
 
 // Exports the user routes

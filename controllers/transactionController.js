@@ -1,11 +1,11 @@
 const { validationResult } = require("express-validator");
 const sendResponse = require("../utils/commonResponse");
 const HTTP_STATUS = require("../constants/statusCodes");
-const cartModel = require("../model/cart");
-const bookModel = require("../model/book");
-const transactionModel = require("../model/transaction");
-const userModel = require("../model/user");
-const balanceModel = require("../model/balance");
+const cartModel = require("../models/cart");
+const bookModel = require("../models/book");
+const transactionModel = require("../models/transaction");
+const userModel = require("../models/user");
+const balanceModel = require("../models/balance");
 
 /**
  * Represents a cart controller

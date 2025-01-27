@@ -9,8 +9,8 @@
 const { validationResult } = require("express-validator");
 const HTTP_STATUS = require("../constants/statusCodes");
 const sendResponse = require("../utils/commonResponse");
-const bookModel = require("../model/book");
-const discountModel = require("../model/discount");
+const bookModel = require("../models/book");
+const discountModel = require("../models/discount");
 
 /**
  * Represents a discount controller

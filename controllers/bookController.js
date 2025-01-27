@@ -9,7 +9,7 @@
 const { validationResult } = require("express-validator");
 const HTTP_STATUS = require("../constants/statusCodes");
 const sendResponse = require("../utils/commonResponse");
-const bookModel = require("../model/book");
+const bookModel = require("../models/book");
 
 /**
  * Represents a book controller

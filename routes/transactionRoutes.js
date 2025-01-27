@@ -9,7 +9,7 @@
 const express = require("express");
 const transactionRoutes = express();
 const transactionValidator = require("../middleware/transactionValidation");
-const transactionController = require("../controller/transactionController");
+const transactionController = require("../controllers/transactionController");
 const {
 	isAuthenticated,
 	isAuthorized,

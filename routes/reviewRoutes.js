@@ -9,7 +9,7 @@
 const express = require("express");
 const reviewRoutes = express();
 const reviewValidator = require("../middleware/reviewValidation");
-const reviewController = require("../controller/reviewController");
+const reviewController = require("../controllers/reviewController");
 const { isAuthenticated } = require("../middleware/tokenValidation");
 
 // Sets up the routes, invokes corresponding APIs and review controller methods

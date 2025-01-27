@@ -9,7 +9,7 @@
 const express = require("express");
 const discountRoutes = express();
 const discountValidator = require("../middleware/discountValidation");
-const discountController = require("../controller/discountController");
+const discountController = require("../controllers/discountController");
 const {
 	isAuthenticated,
 	isAuthorized,

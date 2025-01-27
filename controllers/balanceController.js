@@ -9,8 +9,8 @@
 const { validationResult } = require("express-validator");
 const sendResponse = require("../utils/commonResponse");
 const HTTP_STATUS = require("../constants/statusCodes");
-const userModel = require("../model/user");
-const balanceModel = require("../model/balance");
+const userModel = require("../models/user");
+const balanceModel = require("../models/balance");
 
 /**
  * Represents a balance controller

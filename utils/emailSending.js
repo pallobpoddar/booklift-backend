@@ -2,7 +2,7 @@ const path = require("path");
 const { promisify } = require("util");
 const ejs = require("ejs");
 const ejsRenderFile = promisify(ejs.renderFile);
-const transporter = require("../config/mail");
+const transporter = require("../configs/mail");
 
 const sendEmail = async (auth, token, purpose) => {
   const url = path.join(

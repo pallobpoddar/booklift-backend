@@ -9,7 +9,7 @@
 const express = require("express");
 const bookRoutes = express();
 const bookValidator = require("../middleware/bookValidation");
-const bookController = require("../controller/bookController");
+const bookController = require("../controllers/bookController");
 const {
 	isAuthenticated,
 	isAuthorized,
