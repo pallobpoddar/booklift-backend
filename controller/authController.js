@@ -2,15 +2,15 @@ const sendResponse = require("../utils/commonResponse");
 const HTTP_STATUS = require("../constants/statusCodes");
 const userModel = require("../model/user");
 const authModel = require("../model/auth");
-const bcrypt = require("bcrypt");
 const crypto = require("crypto");
-const { default: mongoose } = require("mongoose");
+const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const { hashPassword, comparePasswords } = require("../utils/passwordHashing");
 const { sendEmail } = require("../utils/emailSending");
 const {
   generateAccessToken,
   generateRefreshToken,
+  verifyRefreshToken,
 } = require("../utils/tokenGeneration");
 
 class AuthController {
@@ -245,10 +245,7 @@ class AuthController {
         return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
       }
 
-      const decoded = jwt.verify(
-        refreshToken,
-        process.env.REFRESH_TOKEN_SECRET
-      );
+      const decoded = verifyRefreshToken(refreshToken);
       if (decoded) {
         const accessToken = generateAccessToken({ sub: decoded.sub });
         res.cookie("accessToken", accessToken, {
@@ -475,7 +472,7 @@ class AuthController {
       const message = await sendEmail(
         auth,
         passwordResetToken,
-        "password-reset",
+        "password-reset"
       );
 
       if (!message.messageId) {
@@ -532,7 +529,7 @@ class AuthController {
         );
       }
 
-      if (await bcrypt.compare(newPassword, auth.password)) {
+      if (await comparePasswords(newPassword, auth.password)) {
         return sendResponse(
           res,
           HTTP_STATUS.CONFLICT,

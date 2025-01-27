@@ -18,4 +18,13 @@ const generateRefreshToken = (payload) => {
   return token;
 };
 
-module.exports = { generateAccessToken, generateRefreshToken };
+const verifyRefreshToken = (token) => {
+  const refreshTokenSecret = process.env.REFRESH_TOKEN_SECRET;
+  return jwt.verify(token, refreshTokenSecret);
+};
+
+module.exports = {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyRefreshToken,
+};
