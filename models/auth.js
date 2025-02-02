@@ -18,14 +18,19 @@ const authSchema = new mongoose.Schema(
       required: true,
       maxLength: 100,
     },
-    user: {
-      type: mongoose.Types.ObjectId,
-      ref: "User",
-      required: true,
+    role: {
+      type: String,
+      enum: ["Admin", "User"],
+      default: "User",
     },
-    isAdmin: {
-      type: Boolean,
-      default: false,
+    admin: {
+      type: mongoose.Types.ObjectId || null,
+      ref: "Admin",
+      default: null,
+    },
+    user: {
+      type: mongoose.Types.ObjectId || null,
+      ref: "User",
     },
     isVerified: {
       type: Boolean,
