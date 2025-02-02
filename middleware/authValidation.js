@@ -74,6 +74,15 @@ const authValidator = {
       .withMessage("Incorrect email or password"),
   ],
 
+  signOut: [
+    param("id")
+      .exists()
+      .withMessage("Id is required")
+      .bail()
+      .isMongoId()
+      .withMessage("Invalid id"),
+  ],
+
   verifyEmail: [
     param("token")
       .exists()

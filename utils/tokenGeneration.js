@@ -5,15 +5,18 @@ dotenv.config();
 
 const generateAccessToken = (payload) => {
   const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET;
-  const token = jwt.sign(payload, accessTokenSecret, { expiresIn: "15m" });
+  const accessTokenValidityPeriod = 15 * 60 * 1000;
+  const token = jwt.sign(payload, accessTokenSecret, {
+    expiresIn: accessTokenValidityPeriod,
+  });
   return token;
 };
 
 const generateRefreshToken = (payload) => {
   const refreshTokenSecret = process.env.REFRESH_TOKEN_SECRET;
-  const refreshTokenExpiration = 7 * 24 * 60 * 60 * 1000;
+  const refreshTokenValidityPeriod = 7 * 24 * 60 * 60 * 1000;
   const token = jwt.sign(payload, refreshTokenSecret, {
-    expiresIn: refreshTokenExpiration,
+    expiresIn: refreshTokenValidityPeriod,
   });
   return token;
 };

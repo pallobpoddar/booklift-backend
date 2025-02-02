@@ -191,17 +191,26 @@ class AuthController {
       const accessToken = generateAccessToken({ sub: auth._id });
       const refreshToken = generateRefreshToken({ sub: auth._id });
 
+      await authModel.findByIdAndUpdate(auth._id, {
+        $set: {
+          refreshToken: refreshToken,
+        },
+      });
+
+      const accessTokenValidityPeriod = 15 * 60 * 1000;
+      const refreshTokenValidityPeriod = 7 * 24 * 60 * 60 * 1000;
+
       res.cookie("accessToken", accessToken, {
         httpOnly: true,
         secure: true,
         sameSite: "none",
-        maxAge: 15 * 60 * 1000,
+        maxAge: accessTokenValidityPeriod,
       });
       res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
         secure: true,
         sameSite: "none",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
+        maxAge: refreshTokenValidityPeriod,
       });
 
       return sendResponse(res, HTTP_STATUS.OK, "Successfully signed in", data);
@@ -219,10 +228,17 @@ class AuthController {
     try {
       const accessToken = req.cookies.accessToken;
       const refreshToken = req.cookies.refreshToken;
+      const { id } = req.params;
 
       if (!accessToken || !refreshToken) {
         return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
       }
+
+      await authModel.findByIdAndUpdate(id, {
+        $set: {
+          refreshToken: null,
+        },
+      });
 
       res.clearCookie("accessToken");
       res.clearCookie("refreshToken");
@@ -240,26 +256,53 @@ class AuthController {
 
   async refreshToken(req, res) {
     try {
+      const accessToken = req.cookies.accessToken;
       const refreshToken = req.cookies.refreshToken;
-      if (!refreshToken) {
+      if (accessToken || !refreshToken) {
         return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
       }
 
       const decoded = verifyRefreshToken(refreshToken);
-      if (decoded) {
-        const accessToken = generateAccessToken({ sub: decoded.sub });
-        res.cookie("accessToken", accessToken, {
-          httpOnly: true,
-          secure: true,
-          sameSite: "none",
-          maxAge: 15 * 60 * 1000,
-        });
-        return sendResponse(
-          res,
-          HTTP_STATUS.OK,
-          "Successfully refreshed token"
-        );
+      if (!decoded) {
+        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
       }
+
+      const auth = await authModel.findById(decoded.sub);
+      if (!auth) {
+        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
+      }
+
+      if (auth.refreshToken !== refreshToken) {
+        await authModel.findByIdAndUpdate(decoded.sub, {
+          $set: {
+            refreshToken: null,
+          },
+        });
+        res.clearCookie("refreshToken");
+
+        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
+      }
+
+      const newAccessToken = generateAccessToken({ sub: decoded.sub });
+      const newRefreshToken = generateRefreshToken({ sub: decoded.sub });
+
+      const accessTokenValidityPeriod = 15 * 60 * 1000;
+      const refreshTokenValidityPeriod = 7 * 24 * 60 * 60 * 1000;
+
+      res.cookie("accessToken", newAccessToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        maxAge: accessTokenValidityPeriod,
+      });
+      res.cookie("refreshToken", newRefreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        maxAge: refreshTokenValidityPeriod,
+      });
+
+      return sendResponse(res, HTTP_STATUS.OK, "Successfully refreshed token");
     } catch (error) {
       console.error(error);
       if (error instanceof jwt.TokenExpiredError) {
@@ -303,12 +346,16 @@ class AuthController {
         );
       }
 
+      const accessToken = generateAccessToken({ id: auth._id });
+      const refreshToken = generateRefreshToken({ id: auth._id });
+
       const updatedAuth = await authModel
         .findByIdAndUpdate(
           id,
           {
             $set: {
               isVerified: true,
+              refreshToken: refreshToken,
               verificationToken: null,
               verificationTokenExpiryDate: null,
             },
@@ -327,20 +374,20 @@ class AuthController {
         isVerified: updatedAuth.isVerified,
       };
 
-      const accessToken = generateAccessToken({ id: updatedAuth._id });
-      const refreshToken = generateRefreshToken({ id: updatedAuth._id });
+      const accessTokenValidityPeriod = 15 * 60 * 1000;
+      const refreshTokenValidityPeriod = 7 * 24 * 60 * 60 * 1000;
 
       res.cookie("accessToken", accessToken, {
         httpOnly: true,
         secure: true,
         sameSite: "none",
-        maxAge: 15 * 60 * 1000,
+        maxAge: accessTokenValidityPeriod,
       });
       res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
         secure: true,
         sameSite: "none",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
+        maxAge: refreshTokenValidityPeriod,
       });
 
       return sendResponse(
@@ -542,6 +589,7 @@ class AuthController {
       await authModel.findByIdAndUpdate(auth._id, {
         $set: {
           password: hashedPassword,
+          numberOfPasswordResetEmailSent: 0,
           passwordResetToken: null,
           passwordResetTokenExpiryDate: null,
           passwordResetBlockedUntil: null,

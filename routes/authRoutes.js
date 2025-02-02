@@ -16,7 +16,7 @@ authRoutes.post(
   handleValidationErrors,
   authController.signIn
 );
-authRoutes.delete("/signout", authController.signOut);
+authRoutes.post("/signout/:id", authController.signOut);
 authRoutes.post("/token-refresh", authController.refreshToken);
 authRoutes.post(
   "/email-verification/:token/:id",

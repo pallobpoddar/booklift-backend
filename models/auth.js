@@ -39,6 +39,10 @@ const authSchema = new mongoose.Schema(
       type: Date || null,
       default: null,
     },
+    refreshToken: {
+      type: String || null,
+      default: null,
+    },
     numberOfFailedSignin: {
       type: Number,
       default: 0,
