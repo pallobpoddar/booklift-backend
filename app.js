@@ -51,16 +51,16 @@ app.use((err, req, res, next) => {
   next();
 });
 app.use(morgan("combined", { stream: accessLogStream }));
-app.use("/api/auth", authRouter);
-app.use("/api/admins", adminRouter);
-app.use("/api/users", userRouter);
-app.use("/api/books", bookRouter);
-app.use("/api/transactions", transactionRouter);
-app.use("/api/carts", cartRouter);
-app.use("/api/reviews", reviewRouter);
-app.use("/api/discounts", discountRouter);
-app.use("/api/balances", balanceRouter);
-app.use("/api/files", fileRouter);
+app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/admins", adminRouter);
+app.use("/api/v1/users", userRouter);
+app.use("/api/v1/books", bookRouter);
+app.use("/api/v1/transactions", transactionRouter);
+app.use("/api/v1/carts", cartRouter);
+app.use("/api/v1/reviews", reviewRouter);
+app.use("/api/v1/discounts", discountRouter);
+app.use("/api/v1/balances", balanceRouter);
+app.use("/api/v1/files", fileRouter);
 app.use(async (req, res) => {
   return sendResponse(
     res,

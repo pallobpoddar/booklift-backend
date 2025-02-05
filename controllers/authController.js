@@ -188,7 +188,8 @@ class AuthController {
       }
 
       const data = {
-        id: auth._id,
+        authId: auth._id,
+        profileId: auth.user?._id ?? auth.admin?._id,
         name: auth.user?.name ?? auth.admin?.name,
         email: auth.email,
         role: auth.role,
@@ -265,6 +266,8 @@ class AuthController {
 
   async refreshToken(req, res) {
     try {
+      const { id } = req.params;
+
       const accessToken = req.cookies.accessToken;
       const refreshToken = req.cookies.refreshToken;
       if (accessToken || !refreshToken) {
@@ -276,13 +279,13 @@ class AuthController {
         return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
       }
 
-      const auth = await authModel.findById(decoded.sub);
+      const auth = await authModel.findById(id);
       if (!auth) {
         return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
       }
 
       if (auth.refreshToken !== refreshToken) {
-        await authModel.findByIdAndUpdate(decoded.sub, {
+        await authModel.findByIdAndUpdate(id, {
           $set: {
             refreshToken: null,
           },
@@ -292,8 +295,8 @@ class AuthController {
         return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
       }
 
-      const newAccessToken = generateAccessToken({ sub: decoded.sub });
-      const newRefreshToken = generateRefreshToken({ sub: decoded.sub });
+      const newAccessToken = generateAccessToken({ sub: id });
+      const newRefreshToken = generateRefreshToken({ sub: id });
 
       const accessTokenValidityPeriod = 15 * 60 * 1000;
       const refreshTokenValidityPeriod = 7 * 24 * 60 * 60 * 1000;
@@ -374,12 +377,13 @@ class AuthController {
         .populate("user");
 
       const data = {
-        id: updatedAuth._id,
-        name: updatedAuth.user.name,
-        email: updatedAuth.user.email,
-        phone: updatedAuth.user.phone,
-        address: updatedAuth.user.address,
-        isAdmin: updatedAuth.isAdmin,
+        authId: auth._id,
+        profileId: auth.user._id,
+        name: auth.user.name,
+        email: auth.email,
+        role: auth.role,
+        phone: auth.user.phone,
+        address: auth.user.address,
         isVerified: updatedAuth.isVerified,
       };
 

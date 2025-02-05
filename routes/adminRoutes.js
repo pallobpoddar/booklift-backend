@@ -6,7 +6,7 @@ const handleValidationErrors = require("../middleware/validationMiddleware");
 const adminController = require("../controllers/adminController");
 
 adminRoutes.post(
-  "/registration",
+  "",
   authGuard("Admin"),
   adminValidator.validateRegistration,
   handleValidationErrors,

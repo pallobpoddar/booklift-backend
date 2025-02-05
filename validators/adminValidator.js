@@ -17,10 +17,10 @@ const adminValidator = {
       .withMessage("Character limit exceeded"),
     body("email")
       .exists()
-      .withMessage("Incorrect email or password")
+      .withMessage("Email is required")
       .bail()
       .isEmail()
-      .withMessage("Incorrect email or password"),
+      .withMessage("Invalid email"),
   ],
 };
 
