@@ -43,5 +43,12 @@ authRoutes.post(
   handleValidationErrors,
   authController.resetPassword
 );
+authRoutes.patch(
+  "/:id/password-change",
+  authGuard(),
+  authValidator.validatePasswordChange,
+  handleValidationErrors,
+  authController.changePassword
+)
 
 module.exports = authRoutes;

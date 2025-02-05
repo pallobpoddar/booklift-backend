@@ -12,10 +12,7 @@ const {
   generateRefreshToken,
   verifyRefreshToken,
 } = require("../utils/tokenGeneration");
-const {
-  hashPassword,
-  comparePasswords,
-} = require("../utils/passwordHashing");
+const { hashPassword, comparePasswords } = require("../utils/passwordHashing");
 
 class AuthController {
   async signUp(req, res) {
@@ -612,7 +609,8 @@ class AuthController {
         );
       }
 
-      if (await comparePasswords(newPassword, auth.password)) {
+      const checkPassword = await comparePasswords(newPassword, auth.password);
+      if (checkPassword) {
         return sendResponse(
           res,
           HTTP_STATUS.CONFLICT,
@@ -636,6 +634,63 @@ class AuthController {
         res,
         HTTP_STATUS.OK,
         "Successfully reset the password"
+      );
+    } catch (error) {
+      console.error(error);
+      return sendResponse(
+        res,
+        HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        "Internal server error"
+      );
+    }
+  }
+
+  async changePassword(req, res) {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      const { id } = req.params;
+
+      const auth = await authModel.findById(id);
+      if (!auth) {
+        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
+      }
+
+      const checkCurrentPassword = await comparePasswords(
+        currentPassword,
+        auth.password
+      );
+      if (!checkCurrentPassword) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.UNAUTHORIZED,
+          "Incorrect password"
+        );
+      }
+
+      const checkNewPassword = await comparePasswords(
+        newPassword,
+        auth.password
+      );
+      if (checkNewPassword) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.CONFLICT,
+          "New password must be different from the previous password"
+        );
+      }
+
+      const hashedPassword = await hashPassword(newPassword);
+
+      await authModel.findByIdAndUpdate(auth._id, {
+        $set: {
+          password: hashedPassword,
+        },
+      });
+
+      return sendResponse(
+        res,
+        HTTP_STATUS.OK,
+        "Successfully changed the password"
       );
     } catch (error) {
       console.error(error);

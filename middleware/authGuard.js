@@ -26,7 +26,7 @@ const authGuard = (roles) => {
         return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
       }
 
-      if (roles.length > 0 && !roles.includes(auth.role)) {
+      if (roles && !roles.includes(auth.role)) {
         return sendResponse(res, HTTP_STATUS.FORBIDDEN, "Access denied");
       }
 
