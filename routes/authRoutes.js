@@ -12,13 +12,6 @@ authRoutes.post(
   authController.signUp
 );
 authRoutes.post(
-  "/admin-registration",
-  authGuard("Admin"),
-  authValidator.validateAdminRegistration,
-  handleValidationErrors,
-  authController.registerAdmin
-);
-authRoutes.post(
   "/signin",
   authValidator.validateSignin,
   handleValidationErrors,
