@@ -13,6 +13,10 @@ const adminSchema = new mongoose.Schema(
       unique: true,
       maxLength: 100,
     },
+    isSuperAdmin: {
+      type: Boolean,
+      default: false,
+    },
     phone: {
       type: String,
       maxLength: 20,

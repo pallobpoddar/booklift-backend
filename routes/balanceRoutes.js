@@ -8,19 +8,16 @@
 // Imports necessary modules
 const express = require("express");
 const balanceRoutes = express();
-const balanceValidator = require("../middleware/balanceValidation");
+const balanceValidator = require("../validators/balanceValidation");
 const balanceController = require("../controllers/balanceController");
-const { isAuthenticated } = require("../middleware/tokenValidation");
 
 balanceRoutes.post(
 	"/add/:id",
-	isAuthenticated,
 	balanceValidator.balanceAdd,
 	balanceController.add
 );
 balanceRoutes.patch(
 	"/update/:id",
-	isAuthenticated,
 	balanceValidator.balanceAdd,
 	balanceController.updateOneById
 );

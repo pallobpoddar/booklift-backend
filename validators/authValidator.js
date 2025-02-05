@@ -1,7 +1,7 @@
 const { body, param } = require("express-validator");
 
 const authValidator = {
-  signUp: [
+  validateSignup: [
     body("name")
       .exists()
       .withMessage("Name is required")
@@ -50,7 +50,29 @@ const authValidator = {
       }),
   ],
 
-  signIn: [
+  validateAdminRegistration: [
+    body("name")
+      .exists()
+      .withMessage("Name is required")
+      .bail()
+      .isString()
+      .withMessage("Name must contain characters")
+      .bail()
+      .trim()
+      .notEmpty()
+      .withMessage("Name can't be empty")
+      .bail()
+      .isLength({ max: 100 })
+      .withMessage("Character limit exceeded"),
+    body("email")
+      .exists()
+      .withMessage("Incorrect email or password")
+      .bail()
+      .isEmail()
+      .withMessage("Incorrect email or password"),
+  ],
+
+  validateSignin: [
     body("email")
       .exists()
       .withMessage("Incorrect email or password")
@@ -74,7 +96,7 @@ const authValidator = {
       .withMessage("Incorrect email or password"),
   ],
 
-  signOut: [
+  validateSignout: [
     param("id")
       .exists()
       .withMessage("Id is required")
@@ -83,7 +105,7 @@ const authValidator = {
       .withMessage("Invalid id"),
   ],
 
-  verifyEmail: [
+  validateEmailVerification: [
     param("token")
       .exists()
       .withMessage("Token is required")
@@ -101,7 +123,7 @@ const authValidator = {
       .withMessage("Invalid id"),
   ],
 
-  resendVerificationEmail: [
+  validateVerificationEmailResending: [
     param("id")
       .exists()
       .withMessage("Id is required")
@@ -110,7 +132,7 @@ const authValidator = {
       .withMessage("Invalid id"),
   ],
 
-  sendPasswordResetEmail: [
+  validatePasswordResetEmailSending: [
     body("email")
       .exists()
       .withMessage("Email is required")
@@ -119,7 +141,7 @@ const authValidator = {
       .withMessage("Invalid email"),
   ],
 
-  resetPassword: [
+  validatePasswordReset: [
     param("token")
       .exists()
       .withMessage("Token is required")

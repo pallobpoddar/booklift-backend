@@ -11,4 +11,28 @@ const comparePasswords = async (rawPassword, hashedPassword) => {
   return result;
 };
 
-module.exports = { hashPassword, comparePasswords };
+const generateStrongPassword = async (length = 8) => {
+  const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const numbers = "0123456789";
+  const symbols = "!@#$%^&*()-_=+[]{}|;:',.<>?/";
+  const allChars = letters + numbers + symbols;
+
+  let password = "";
+
+  password += letters[Math.floor(Math.random() * letters.length)];
+  password += numbers[Math.floor(Math.random() * numbers.length)];
+  password += symbols[Math.floor(Math.random() * symbols.length)];
+
+  for (let i = 3; i < length; i++) {
+    password += allChars[Math.floor(Math.random() * allChars.length)];
+  }
+
+  password = password
+    .split("")
+    .sort(() => Math.random() - 0.5)
+    .join("");
+
+  return password;
+};
+
+module.exports = { hashPassword, comparePasswords, generateStrongPassword };

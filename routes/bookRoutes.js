@@ -8,12 +8,8 @@
 // Imports necessary modules
 const express = require("express");
 const bookRoutes = express();
-const bookValidator = require("../middleware/bookValidation");
+const bookValidator = require("../validators/bookValidation");
 const bookController = require("../controllers/bookController");
-const {
-	isAuthenticated,
-	isAuthorized,
-} = require("../middleware/tokenValidation");
 
 // Sets up the routes, invokes corresponding APIs and book controller methods
 bookRoutes.post(

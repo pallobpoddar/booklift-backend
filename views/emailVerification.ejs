@@ -1,4 +1,6 @@
-<table style="max-width: 600px; margin: 0 auto; padding: 16px 0">
+<table
+  style="max-width: 600px; margin: 0 auto; padding: 16px 0; font-size: 16px"
+>
   <tr>
     <td align="center">
       <h1 style="color: #54575a">BOOKLIFT</h1>
@@ -6,10 +8,10 @@
   </tr>
   <tr>
     <td>
-      <p style="font-size: 16px">
+      <p>
         <b>Dear <%= name %>,</b>
       </p>
-      <p style="font-size: 16px">
+      <p>
         Thank you for signing up. Please verify your email address by clicking
         the button below.
       </p>
@@ -18,7 +20,7 @@
   <tr>
     <td align="center" style="padding: 32px 0">
       <a
-        href="<%= url %>"
+        href="<%= verificationUrl %>"
         style="
           background-color: #54575a;
           color: white;
@@ -36,9 +38,9 @@
   </tr>
   <tr>
     <td>
-      <p style="font-size: 16px">
-        This link will expire in 1 hour. If you did not request this
-        email, please ignore it.
+      <p>
+        This link will expire in 1 hour. If you did not request this email,
+        please ignore it.
       </p>
     </td>
   </tr>

@@ -8,29 +8,21 @@
 // Imports necessary modules
 const express = require("express");
 const transactionRoutes = express();
-const transactionValidator = require("../middleware/transactionValidation");
+const transactionValidator = require("../validators/transactionValidation");
 const transactionController = require("../controllers/transactionController");
-const {
-	isAuthenticated,
-	isAuthorized,
-} = require("../middleware/tokenValidation");
 
 // Sets up the routes, invokes corresponding APIs and transaction controller methods
 transactionRoutes.post(
 	"/checkout",
-	isAuthenticated,
 	transactionValidator.checkout,
 	transactionController.add
 );
 transactionRoutes.get(
 	"/all",
-	isAuthenticated,
-	isAuthorized,
 	transactionController.getAll
 );
 transactionRoutes.get(
 	"/get-transactions/:id",
-	isAuthenticated,
 	transactionController.getTransactions
 );
 // Exports the transaction routes
