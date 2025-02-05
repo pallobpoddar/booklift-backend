@@ -195,7 +195,6 @@ class AuthController {
         role: auth.role,
         phone: auth.user?.phone ?? auth.admin?.phone,
         address: auth.user?.address ?? auth.admin?.address,
-        isVerified: auth.isVerified,
       };
 
       const accessToken = generateAccessToken({ sub: auth._id });
@@ -384,7 +383,6 @@ class AuthController {
         role: auth.role,
         phone: auth.user.phone,
         address: auth.user.address,
-        isVerified: updatedAuth.isVerified,
       };
 
       const accessTokenValidityPeriod = 15 * 60 * 1000;
