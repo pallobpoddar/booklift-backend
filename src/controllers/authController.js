@@ -360,7 +360,7 @@ class AuthController {
       const accessToken = generateAccessToken({ id: auth._id });
       const refreshToken = generateRefreshToken({ id: auth._id });
 
-      const updatedAuth = await authModel
+      await authModel
         .findByIdAndUpdate(
           id,
           {
