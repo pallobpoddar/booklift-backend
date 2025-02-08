@@ -13,6 +13,7 @@ const {
   verifyRefreshToken,
 } = require("../utils/tokenGeneration");
 const { hashPassword, comparePasswords } = require("../utils/passwordHashing");
+const config = require("../configs/config");
 
 class AuthController {
   async signUp(req, res) {
@@ -67,7 +68,7 @@ class AuthController {
       const verificationToken = crypto.randomBytes(32).toString("hex");
 
       const verificationUrl = path.join(
-        process.env.FRONTEND_URL,
+        config.frontendUrl,
         "email-verification",
         verificationToken,
         auth[0]._id.toString()
@@ -88,13 +89,11 @@ class AuthController {
         );
       }
 
-      const verificationTokenValidityPeriod = 60 * 60 * 1000;
-
       await authModel.findByIdAndUpdate(auth[0]._id, {
         $set: {
           verificationToken: verificationToken,
           verificationTokenExpiryDate:
-            Date.now() + verificationTokenValidityPeriod,
+            Date.now() + config.verificationTokenValidityPeriod,
         },
       });
 
@@ -144,11 +143,9 @@ class AuthController {
           );
         }
 
-        const signinBlockedDuration = 60 * 60 * 1000;
-
         await authModel.findByIdAndUpdate(auth._id, {
           $set: {
-            signinBlockedUntil: Date.now() + signinBlockedDuration,
+            signinBlockedUntil: Date.now() + config.signinBlockedDuration,
           },
           $inc: {
             numberOfFailedSignin: 1,
@@ -206,20 +203,17 @@ class AuthController {
         },
       });
 
-      const accessTokenValidityPeriod = 15 * 60 * 1000;
-      const refreshTokenValidityPeriod = 7 * 24 * 60 * 60 * 1000;
-
       res.cookie("accessToken", accessToken, {
         httpOnly: true,
         secure: true,
         sameSite: "none",
-        maxAge: accessTokenValidityPeriod,
+        maxAge: config.accessTokenValidityPeriod,
       });
       res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
         secure: true,
         sameSite: "none",
-        maxAge: refreshTokenValidityPeriod,
+        maxAge: config.refreshTokenValidityPeriod,
       });
 
       return sendResponse(res, HTTP_STATUS.OK, "Successfully signed in", data);
@@ -297,20 +291,17 @@ class AuthController {
       const newAccessToken = generateAccessToken({ sub: id });
       const newRefreshToken = generateRefreshToken({ sub: id });
 
-      const accessTokenValidityPeriod = 15 * 60 * 1000;
-      const refreshTokenValidityPeriod = 7 * 24 * 60 * 60 * 1000;
-
       res.cookie("accessToken", newAccessToken, {
         httpOnly: true,
         secure: true,
         sameSite: "none",
-        maxAge: accessTokenValidityPeriod,
+        maxAge: config.accessTokenValidityPeriod,
       });
       res.cookie("refreshToken", newRefreshToken, {
         httpOnly: true,
         secure: true,
         sameSite: "none",
-        maxAge: refreshTokenValidityPeriod,
+        maxAge: config.refreshTokenValidityPeriod,
       });
 
       return sendResponse(res, HTTP_STATUS.OK, "Successfully refreshed token");
@@ -385,20 +376,17 @@ class AuthController {
         address: auth.user.address,
       };
 
-      const accessTokenValidityPeriod = 15 * 60 * 1000;
-      const refreshTokenValidityPeriod = 7 * 24 * 60 * 60 * 1000;
-
       res.cookie("accessToken", accessToken, {
         httpOnly: true,
         secure: true,
         sameSite: "none",
-        maxAge: accessTokenValidityPeriod,
+        maxAge: config.accessTokenValidityPeriod,
       });
       res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
         secure: true,
         sameSite: "none",
-        maxAge: refreshTokenValidityPeriod,
+        maxAge: config.refreshTokenValidityPeriod,
       });
 
       return sendResponse(
@@ -442,7 +430,7 @@ class AuthController {
       const verificationToken = crypto.randomBytes(32).toString("hex");
 
       const verificationUrl = path.join(
-        process.env.FRONTEND_URL,
+        config.frontendUrl,
         "email-verification",
         verificationToken,
         auth._id.toString()
@@ -470,13 +458,11 @@ class AuthController {
         );
       }
 
-      const verificationTokenValidityPeriod = 60 * 60 * 1000;
-
       await authModel.findByIdAndUpdate(auth._id, {
         $set: {
           verificationToken: verificationToken,
           verificationTokenExpiryDate:
-            Date.now() + verificationTokenValidityPeriod,
+            Date.now() + config.verificationTokenValidityPeriod,
         },
       });
 
@@ -522,12 +508,10 @@ class AuthController {
         auth.numberOfPasswordResetEmailSent >= 5 &&
         auth.numberOfPasswordResetEmailSent % 5 === 0
       ) {
-        const passwordResetBlockedDuration = 60 * 60 * 1000;
-
         await authModel.findByIdAndUpdate(auth._id, {
           $set: {
             passwordResetBlockedUntil:
-              Date.now() + passwordResetBlockedDuration,
+              Date.now() + config.passwordResetBlockedDuration,
           },
           $inc: {
             numberOfPasswordResetEmailSent: 1,
@@ -544,7 +528,7 @@ class AuthController {
       const passwordResetToken = crypto.randomBytes(32).toString("hex");
 
       const passwordResetUrl = path.join(
-        process.env.FRONTEND_URL,
+        config.frontendUrl,
         "password-reset",
         passwordResetToken,
         auth._id.toString()
@@ -565,13 +549,11 @@ class AuthController {
         );
       }
 
-      const passwordResetTokenValidityPeriod = 60 * 60 * 1000;
-
       await authModel.findByIdAndUpdate(auth._id, {
         $set: {
           passwordResetToken: passwordResetToken,
           passwordResetTokenExpiryDate:
-            Date.now() + passwordResetTokenValidityPeriod,
+            Date.now() + config.passwordResetTokenValidityPeriod,
         },
         $inc: {
           numberOfPasswordResetEmailSent: 1,

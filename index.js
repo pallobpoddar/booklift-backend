@@ -3,7 +3,6 @@ const app = express();
 const morgan = require("morgan");
 const fs = require("fs");
 const path = require("path");
-const dotenv = require("dotenv");
 const cors = require("cors");
 const multer = require("multer");
 const cookieParser = require("cookie-parser");
@@ -20,14 +19,12 @@ const reviewRouter = require("./src/routes/reviewRoutes");
 const balanceRouter = require("./src/routes/balanceRoutes");
 const fileRouter = require("./src/routes/fileRoutes");
 const databaseConnection = require("./src/configs/database");
+const config = require("./src/configs/config");
 
 const accessLogStream = fs.createWriteStream(
   path.join(__dirname, "logFile.log"),
   { flags: "a" }
 );
-
-dotenv.config();
-const port = process.env.PORT;
 
 app.use(
   cors({
@@ -79,7 +76,7 @@ app.use((err, req, res, next) => {
 });
 
 databaseConnection(() => {
-  app.listen(port, () => {
-    console.log(`Server is running on ${port}`);
+  app.listen(config.port, () => {
+    console.log(`Server is running on ${config.port}`);
   });
 });
