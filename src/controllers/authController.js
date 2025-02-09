@@ -1,19 +1,22 @@
-const sendResponse = require("../utils/commonResponse");
+const sendResponse = require("../utils/responseHandler");
 const HTTP_STATUS = require("../constants/statusCodes");
 const userModel = require("../models/user");
 const authModel = require("../models/auth");
-const crypto = require("crypto");
 const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const path = require("path");
-const { sendEmail } = require("../utils/emailSending");
+const { sendEmail } = require("../utils/emailSender");
 const {
   generateAccessToken,
   generateRefreshToken,
   verifyRefreshToken,
-} = require("../utils/tokenGeneration");
-const { hashPassword, comparePasswords } = require("../utils/passwordHashing");
+} = require("../utils/jwtTokenHandler");
+const {
+  hashPassword,
+  comparePasswords,
+} = require("../utils/passwordSecurityHandler");
 const config = require("../configs/config");
+const { generateUrlToken, hashToken } = require("../utils/cryptoTokenHandler");
 
 class AuthController {
   async signUp(req, res) {
@@ -65,15 +68,16 @@ class AuthController {
         session.endSession();
       }
 
-      const verificationToken = crypto.randomBytes(32).toString("hex");
+      const emailVerificationToken = generateUrlToken();
+      const hashedEmailVerificationToken = hashToken(emailVerificationToken);
 
-      const verificationUrl = path.join(
+      const emailVerificationUrl = path.join(
         config.frontendUrl,
         "email-verification",
-        verificationToken,
+        emailVerificationToken,
         auth[0]._id.toString()
       );
-      const htmlBodyProperties = { name, verificationUrl };
+      const htmlBodyProperties = { name, emailVerificationUrl };
 
       const message = await sendEmail(
         "emailVerification.ejs",
@@ -91,9 +95,9 @@ class AuthController {
 
       await authModel.findByIdAndUpdate(auth[0]._id, {
         $set: {
-          verificationToken: verificationToken,
-          verificationTokenExpiryDate:
-            Date.now() + config.verificationTokenValidityPeriod,
+          emailVerificationToken: hashedEmailVerificationToken,
+          emailVerificationTokenExpiryDate:
+            Date.now() + config.emailVerificationTokenValidityPeriod,
         },
       });
 
@@ -197,9 +201,11 @@ class AuthController {
       const accessToken = generateAccessToken({ sub: auth._id });
       const refreshToken = generateRefreshToken({ sub: auth._id });
 
+      const hashedRefreshToken = hashToken(refreshToken);
+
       await authModel.findByIdAndUpdate(auth._id, {
         $set: {
-          refreshToken: refreshToken,
+          refreshToken: hashedRefreshToken,
         },
       });
 
@@ -277,7 +283,9 @@ class AuthController {
         return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
       }
 
-      if (auth.refreshToken !== refreshToken) {
+      const hashedCookieRefreshToken = hashToken(refreshToken);
+
+      if (auth.refreshToken !== hashedCookieRefreshToken) {
         await authModel.findByIdAndUpdate(id, {
           $set: {
             refreshToken: null,
@@ -290,6 +298,7 @@ class AuthController {
 
       const newAccessToken = generateAccessToken({ sub: id });
       const newRefreshToken = generateRefreshToken({ sub: id });
+      const newHashedRefreshToken = hashToken(newRefreshToken);
 
       res.cookie("accessToken", newAccessToken, {
         httpOnly: true,
@@ -297,7 +306,7 @@ class AuthController {
         sameSite: "none",
         maxAge: config.accessTokenValidityPeriod,
       });
-      res.cookie("refreshToken", newRefreshToken, {
+      res.cookie("refreshToken", newHashedRefreshToken, {
         httpOnly: true,
         secure: true,
         sameSite: "none",
@@ -331,8 +340,13 @@ class AuthController {
     try {
       const { token, id } = req.params;
 
+      const hashedEmailVerificationToken = hashToken(token);
+
       const auth = await authModel.findById(id);
-      if (!auth || auth.verificationToken !== token) {
+      if (
+        !auth ||
+        auth.emailVerificationToken !== hashedEmailVerificationToken
+      ) {
         return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
       }
 
@@ -340,7 +354,7 @@ class AuthController {
         return sendResponse(res, HTTP_STATUS.OK, "Email is already verified");
       }
 
-      if (auth.verificationTokenExpiryDate < Date.now()) {
+      if (auth.emailVerificationTokenExpiryDate < Date.now()) {
         return sendResponse(
           res,
           HTTP_STATUS.GONE,
@@ -350,6 +364,7 @@ class AuthController {
 
       const accessToken = generateAccessToken({ id: auth._id });
       const refreshToken = generateRefreshToken({ id: auth._id });
+      const hashedRefreshToken = hashToken(refreshToken);
 
       await authModel
         .findByIdAndUpdate(
@@ -357,9 +372,9 @@ class AuthController {
           {
             $set: {
               isVerified: true,
-              refreshToken: refreshToken,
-              verificationToken: null,
-              verificationTokenExpiryDate: null,
+              refreshToken: hashedRefreshToken,
+              emailVerificationToken: null,
+              emailVerificationTokenExpiryDate: null,
             },
           },
           { new: true }
@@ -419,7 +434,7 @@ class AuthController {
         return sendResponse(res, HTTP_STATUS.OK, "Email is already verified");
       }
 
-      if (auth.verificationTokenExpiryDate > Date.now()) {
+      if (auth.emailVerificationTokenExpiryDate > Date.now()) {
         return sendResponse(
           res,
           HTTP_STATUS.CONFLICT,
@@ -427,12 +442,13 @@ class AuthController {
         );
       }
 
-      const verificationToken = crypto.randomBytes(32).toString("hex");
+      const emailVerificationToken = generateUrlToken();
+      const hashedEmailVerificationToken = hashToken(emailVerificationToken);
 
       const verificationUrl = path.join(
         config.frontendUrl,
         "email-verification",
-        verificationToken,
+        emailVerificationToken,
         auth._id.toString()
       );
       const htmlBodyProperties = { name: auth.user.name, verificationUrl };
@@ -460,9 +476,9 @@ class AuthController {
 
       await authModel.findByIdAndUpdate(auth._id, {
         $set: {
-          verificationToken: verificationToken,
-          verificationTokenExpiryDate:
-            Date.now() + config.verificationTokenValidityPeriod,
+          emailVerificationToken: hashedEmailVerificationToken,
+          emailVerificationTokenExpiryDate:
+            Date.now() + config.emailVerificationTokenValidityPeriod,
         },
       });
 
@@ -525,7 +541,8 @@ class AuthController {
         );
       }
 
-      const passwordResetToken = crypto.randomBytes(32).toString("hex");
+      const passwordResetToken = generateUrlToken();
+      const hashedPasswordResetToken = hashToken(passwordResetToken);
 
       const passwordResetUrl = path.join(
         config.frontendUrl,
@@ -551,7 +568,7 @@ class AuthController {
 
       await authModel.findByIdAndUpdate(auth._id, {
         $set: {
-          passwordResetToken: passwordResetToken,
+          passwordResetToken: hashedPasswordResetToken,
           passwordResetTokenExpiryDate:
             Date.now() + config.passwordResetTokenValidityPeriod,
         },
@@ -580,8 +597,10 @@ class AuthController {
       const { token, id } = req.params;
       const { newPassword } = req.body;
 
+      const hashedPasswordResetToken = hashToken(token);
+
       const auth = await authModel.findById(id);
-      if (!auth || auth.passwordResetToken !== token) {
+      if (!auth || auth.passwordResetToken !== hashedPasswordResetToken) {
         return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
       }
 

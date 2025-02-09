@@ -1,13 +1,13 @@
 const mongoose = require("mongoose");
 const adminModel = require("../models/admin");
 const authModel = require("../models/auth");
-const sendResponse = require("../utils/commonResponse");
+const sendResponse = require("../utils/responseHandler");
 const HTTP_STATUS = require("../constants/statusCodes");
 const {
   hashPassword,
   generateStrongPassword,
-} = require("../utils/passwordHashing");
-const { sendEmail } = require("../utils/emailSending");
+} = require("../utils/passwordSecurityHandler");
+const { sendEmail } = require("../utils/emailSender");
 
 class AdminController {
   async register(req, res) {

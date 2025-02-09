@@ -36,11 +36,11 @@ const authSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    verificationToken: {
+    emailVerificationToken: {
       type: String || null,
       default: null,
     },
-    verificationTokenExpiryDate: {
+    emailVerificationTokenExpiryDate: {
       type: Date || null,
       default: null,
     },

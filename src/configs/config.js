@@ -13,7 +13,7 @@ class Config {
     this.emailPass = process.env.EMAIL_PASS;
     this.accessTokenSecret = process.env.ACCESS_TOKEN_SECRET;
     this.refreshTokenSecret = process.env.REFRESH_TOKEN_SECRET;
-    this.verificationTokenValidityPeriod = 60 * 60 * 1000;
+    this.emailVerificationTokenValidityPeriod = 60 * 60 * 1000;
     this.signinBlockedDuration = 60 * 60 * 1000;
     this.accessTokenValidityPeriod = 15 * 60 * 1000;
     this.refreshTokenValidityPeriod = 7 * 24 * 60 * 60 * 1000;

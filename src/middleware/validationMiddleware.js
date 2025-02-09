@@ -1,6 +1,6 @@
 const { validationResult } = require("express-validator");
 const HTTP_STATUS = require("../constants/statusCodes");
-const sendResponse = require("../utils/commonResponse");
+const sendResponse = require("../utils/responseHandler");
 
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req).array();
