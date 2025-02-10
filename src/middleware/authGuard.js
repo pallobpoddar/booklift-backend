@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
-const sendResponse = require("../utils/responseHandler");
+const sendResponse = require("../utils/responseSender");
 const HTTP_STATUS = require("../constants/statusCodes");
-const { verifyAccessToken } = require("../utils/jwtTokenHandler");
+const { verifyAccessToken } = require("../utils/jwtHandler");
 const authModel = require("../models/auth");
 
 const authGuard = (roles) => {

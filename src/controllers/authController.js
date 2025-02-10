@@ -1,4 +1,4 @@
-const sendResponse = require("../utils/responseHandler");
+const sendResponse = require("../utils/responseSender");
 const HTTP_STATUS = require("../constants/statusCodes");
 const userModel = require("../models/user");
 const authModel = require("../models/auth");
@@ -10,7 +10,7 @@ const {
   generateAccessToken,
   generateRefreshToken,
   verifyRefreshToken,
-} = require("../utils/jwtTokenHandler");
+} = require("../utils/jwtHandler");
 const {
   hashPassword,
   comparePasswords,

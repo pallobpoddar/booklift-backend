@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const adminModel = require("../models/admin");
 const authModel = require("../models/auth");
-const sendResponse = require("../utils/responseHandler");
+const sendResponse = require("../utils/responseSender");
 const HTTP_STATUS = require("../constants/statusCodes");
 const {
   hashPassword,
