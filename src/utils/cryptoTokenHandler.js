@@ -1,7 +1,11 @@
 const crypto = require("crypto");
+const { promisify } = require("util");
 
-const generateUrlToken = () => {
-  return crypto.randomBytes(32).toString("hex");
+const generateUrlToken = async () => {
+  const randomBytesAsync = promisify(crypto.randomBytes);
+  const buffer = await randomBytesAsync(32);
+
+  return buffer.toString("hex");
 };
 
 const hashToken = (token) => {

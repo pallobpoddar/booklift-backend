@@ -68,7 +68,7 @@ class AuthController {
         session.endSession();
       }
 
-      const emailVerificationToken = generateUrlToken();
+      const emailVerificationToken = await generateUrlToken();
       const hashedEmailVerificationToken = hashToken(emailVerificationToken);
 
       const emailVerificationUrl = path.join(
@@ -198,8 +198,8 @@ class AuthController {
         address: auth.user?.address ?? auth.admin?.address,
       };
 
-      const accessToken = generateAccessToken({ sub: auth._id });
-      const refreshToken = generateRefreshToken({ sub: auth._id });
+      const accessToken = await generateAccessToken({ sub: auth._id });
+      const refreshToken = await generateRefreshToken({ sub: auth._id });
 
       const hashedRefreshToken = hashToken(refreshToken);
 
@@ -273,7 +273,7 @@ class AuthController {
         return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
       }
 
-      const decoded = verifyRefreshToken(refreshToken);
+      const decoded = await verifyRefreshToken(refreshToken);
       if (!decoded) {
         return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
       }
@@ -296,8 +296,8 @@ class AuthController {
         return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
       }
 
-      const newAccessToken = generateAccessToken({ sub: id });
-      const newRefreshToken = generateRefreshToken({ sub: id });
+      const newAccessToken = await generateAccessToken({ sub: id });
+      const newRefreshToken = await generateRefreshToken({ sub: id });
       const newHashedRefreshToken = hashToken(newRefreshToken);
 
       res.cookie("accessToken", newAccessToken, {
@@ -362,8 +362,8 @@ class AuthController {
         );
       }
 
-      const accessToken = generateAccessToken({ id: auth._id });
-      const refreshToken = generateRefreshToken({ id: auth._id });
+      const accessToken = await generateAccessToken({ id: auth._id });
+      const refreshToken = await generateRefreshToken({ id: auth._id });
       const hashedRefreshToken = hashToken(refreshToken);
 
       await authModel
@@ -442,7 +442,7 @@ class AuthController {
         );
       }
 
-      const emailVerificationToken = generateUrlToken();
+      const emailVerificationToken = await generateUrlToken();
       const hashedEmailVerificationToken = hashToken(emailVerificationToken);
 
       const verificationUrl = path.join(
@@ -541,7 +541,7 @@ class AuthController {
         );
       }
 
-      const passwordResetToken = generateUrlToken();
+      const passwordResetToken = await generateUrlToken();
       const hashedPasswordResetToken = hashToken(passwordResetToken);
 
       const passwordResetUrl = path.join(

@@ -18,7 +18,7 @@ const cartRouter = require("./src/routes/cartRoutes");
 const reviewRouter = require("./src/routes/reviewRoutes");
 const balanceRouter = require("./src/routes/balanceRoutes");
 const fileRouter = require("./src/routes/fileRoutes");
-const databaseConnection = require("./src/configs/database");
+const connectDatabase = require("./src/configs/database");
 const config = require("./src/configs/config");
 
 const accessLogStream = fs.createWriteStream(
@@ -75,7 +75,7 @@ app.use((err, req, res, next) => {
   }
 });
 
-databaseConnection(() => {
+connectDatabase(() => {
   app.listen(config.port, () => {
     console.log(`Server is running on ${config.port}`);
   });

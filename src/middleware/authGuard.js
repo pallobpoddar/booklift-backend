@@ -16,7 +16,7 @@ const authGuard = (roles) => {
         );
       }
 
-      const decoded = verifyAccessToken(accessToken);
+      const decoded = await verifyAccessToken(accessToken);
 
       const auth = await authModel
         .findById(decoded.sub)

@@ -5,7 +5,7 @@ class Config {
     dotenv.config();
 
     this.port = process.env.PORT || 3000;
-    this.databaseUrl = process.env.DATABASE_URL;
+    this.databaseUri = process.env.DATABASE_URI;
     this.frontendUrl = process.env.FRONTEND_URL;
     this.emailHost = process.env.EMAIL_HOST;
     this.emailPort = process.env.EMAIL_PORT;

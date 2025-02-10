@@ -1,34 +1,32 @@
-const dotenv = require("dotenv");
 const jwt = require("jsonwebtoken");
+const { promisify } = require("util");
+const config = require("../configs/config");
 
-dotenv.config();
+const signJwtAsync = promisify(jwt.sign);
+const verifyJwtAsync = promisify(jwt.verify);
 
-const generateAccessToken = (payload) => {
-  const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET;
-  const accessTokenValidityPeriod = 15 * 60 * 1000;
-  const token = jwt.sign(payload, accessTokenSecret, {
-    expiresIn: accessTokenValidityPeriod,
+const generateAccessToken = async (payload) => {
+  const token = await signJwtAsync(payload, config.accessTokenSecret, {
+    expiresIn: config.accessTokenValidityPeriod,
   });
+
   return token;
 };
 
-const generateRefreshToken = (payload) => {
-  const refreshTokenSecret = process.env.REFRESH_TOKEN_SECRET;
-  const refreshTokenValidityPeriod = 7 * 24 * 60 * 60 * 1000;
-  const token = jwt.sign(payload, refreshTokenSecret, {
-    expiresIn: refreshTokenValidityPeriod,
+const generateRefreshToken = async (payload) => {
+  const token = await signJwtAsync(payload, config.refreshTokenSecret, {
+    expiresIn: config.refreshTokenValidityPeriod,
   });
+
   return token;
 };
 
-const verifyAccessToken = (token) => {
-  const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET;
-  return jwt.verify(token, accessTokenSecret);
+const verifyAccessToken = async (token) => {
+  return await verifyJwtAsync(token, config.accessTokenSecret);
 };
 
-const verifyRefreshToken = (token) => {
-  const refreshTokenSecret = process.env.REFRESH_TOKEN_SECRET;
-  return jwt.verify(token, refreshTokenSecret);
+const verifyRefreshToken = async (token) => {
+  return await verifyJwtAsync(token, config.refreshTokenSecret);
 };
 
 module.exports = {
