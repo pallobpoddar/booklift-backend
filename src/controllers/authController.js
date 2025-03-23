@@ -5,7 +5,7 @@ const authModel = require("../models/auth");
 const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const path = require("path");
-const { sendEmail } = require("../utils/emailSender");
+const { sendEmail, constructAndSendEmail } = require("../utils/emailSender");
 const {
   generateAccessToken,
   generateRefreshToken,
@@ -68,22 +68,11 @@ class AuthController {
         session.endSession();
       }
 
-      const emailVerificationToken = await generateUrlToken();
-      const hashedEmailVerificationToken = hashToken(emailVerificationToken);
-
-      const emailVerificationUrl = path.join(
-        config.frontendUrl,
-        "email-verification",
-        emailVerificationToken,
-        auth[0]._id.toString()
-      );
-      const htmlBodyProperties = { name, emailVerificationUrl };
-
-      const message = await sendEmail(
-        "emailVerification.ejs",
-        htmlBodyProperties,
+      const { message, hashedToken } = await constructAndSendEmail(
+        auth[0].id,
+        name,
         email,
-        "Verify your email address"
+        "email-verification"
       );
       if (!message.messageId) {
         return sendResponse(
@@ -95,7 +84,7 @@ class AuthController {
 
       await authModel.findByIdAndUpdate(auth[0]._id, {
         $set: {
-          emailVerificationToken: hashedEmailVerificationToken,
+          emailVerificationToken: hashedToken,
           emailVerificationTokenExpiryDate:
             Date.now() + config.emailVerificationTokenValidityPeriod,
         },
@@ -447,9 +436,9 @@ class AuthController {
 
       const verificationUrl = path.join(
         config.frontendUrl,
+        auth._id.toString(),
         "email-verification",
-        emailVerificationToken,
-        auth._id.toString()
+        emailVerificationToken
       );
       const htmlBodyProperties = { name: auth.user.name, verificationUrl };
 
@@ -459,13 +448,6 @@ class AuthController {
         auth.email,
         "Verify your email address"
       );
-      if (!message.messageId) {
-        return sendResponse(
-          res,
-          HTTP_STATUS.INTERNAL_SERVER_ERROR,
-          "Failed to send verification email"
-        );
-      }
       if (!message.messageId) {
         return sendResponse(
           res,
@@ -546,9 +528,9 @@ class AuthController {
 
       const passwordResetUrl = path.join(
         config.frontendUrl,
+        auth._id.toString(),
         "password-reset",
-        passwordResetToken,
-        auth._id.toString()
+        passwordResetToken
       );
       const htmlBodyProperties = { name: auth.user.name, passwordResetUrl };
 
