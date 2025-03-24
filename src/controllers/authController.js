@@ -179,12 +179,12 @@ class AuthController {
 
       const data = {
         authId: auth._id,
-        profileId: auth.user?._id ?? auth.admin?._id,
-        name: auth.user?.name ?? auth.admin?.name,
+        profileId: auth.user?._id || auth.admin?._id,
+        name: auth.user?.name || auth.admin?.name,
         email: auth.email,
         role: auth.role,
-        phone: auth.user?.phone ?? auth.admin?.phone,
-        address: auth.user?.address ?? auth.admin?.address,
+        phone: auth.user?.phone || auth.admin?.phone,
+        address: auth.user?.address || auth.admin?.address,
       };
 
       const accessToken = await generateAccessToken({ sub: auth._id });

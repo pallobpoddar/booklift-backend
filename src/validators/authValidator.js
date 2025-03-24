@@ -17,7 +17,7 @@ const authValidator = {
 
   validateSignin: [
     validateEmail("Incorrect email or password"),
-    validatePassword("Incorrect email or password"),
+    validatePassword("password", "Incorrect email or password"),
   ],
 
   validateSignout: [validateId()],
