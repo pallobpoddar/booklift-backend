@@ -347,7 +347,7 @@ class AuthController {
         return sendResponse(
           res,
           HTTP_STATUS.GONE,
-          "Token is expired. Please try again"
+          "Token is expired. Please resend verification email"
         );
       }
 
@@ -431,22 +431,11 @@ class AuthController {
         );
       }
 
-      const emailVerificationToken = await generateUrlToken();
-      const hashedEmailVerificationToken = hashToken(emailVerificationToken);
-
-      const verificationUrl = path.join(
-        config.frontendUrl,
-        auth._id.toString(),
-        "email-verification",
-        emailVerificationToken
-      );
-      const htmlBodyProperties = { name: auth.user.name, verificationUrl };
-
-      const message = await sendEmail(
-        "emailVerification.ejs",
-        htmlBodyProperties,
+      const { message, hashedToken } = await constructAndSendEmail(
+        auth.id,
+        auth.user.name,
         auth.email,
-        "Verify your email address"
+        "email-verification"
       );
       if (!message.messageId) {
         return sendResponse(
@@ -458,7 +447,7 @@ class AuthController {
 
       await authModel.findByIdAndUpdate(auth._id, {
         $set: {
-          emailVerificationToken: hashedEmailVerificationToken,
+          emailVerificationToken: hashedToken,
           emailVerificationTokenExpiryDate:
             Date.now() + config.emailVerificationTokenValidityPeriod,
         },

@@ -8,12 +8,7 @@ const {
 } = require("./commonValidator");
 
 const authValidator = {
-  validateSignup: [
-    validateName(),
-    validateEmail(),
-    validatePassword(),
-    validateConfirmPassword(),
-  ],
+  validateSignup: [validateName(), validateEmail(), validatePassword()],
 
   validateSignin: [
     validateEmail("Incorrect email or password"),
