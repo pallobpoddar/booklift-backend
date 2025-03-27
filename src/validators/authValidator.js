@@ -27,7 +27,6 @@ const authValidator = {
     validateToken(),
     validateId(),
     validatePassword("newPassword"),
-    validateConfirmPassword(),
   ],
 
   validatePasswordChange: [

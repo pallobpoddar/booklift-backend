@@ -605,7 +605,7 @@ class AuthController {
       return sendResponse(
         res,
         HTTP_STATUS.OK,
-        "Successfully reset the password"
+        "Successfully reset the password. Redirecting you to sign in page"
       );
     } catch (error) {
       console.error(error);
