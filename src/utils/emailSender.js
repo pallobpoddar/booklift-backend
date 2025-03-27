@@ -26,7 +26,7 @@ const constructAndSendEmail = async (id, name, email, type) => {
   const token = await generateUrlToken();
   const hashedToken = hashToken(token);
 
-  const url = path.join(config.frontendUrl, id, "email-verification", token);
+  const url = path.join(config.frontendUrl, id, type, token);
   const htmlBodyProperties = { name, url };
 
   const message = await sendEmail(

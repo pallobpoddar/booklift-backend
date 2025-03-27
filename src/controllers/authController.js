@@ -4,8 +4,7 @@ const userModel = require("../models/user");
 const authModel = require("../models/auth");
 const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
-const path = require("path");
-const { sendEmail, constructAndSendEmail } = require("../utils/emailSender");
+const { constructAndSendEmail } = require("../utils/emailSender");
 const {
   generateAccessToken,
   generateRefreshToken,
@@ -16,7 +15,7 @@ const {
   comparePasswords,
 } = require("../utils/passwordSecurityHandler");
 const config = require("../configs/config");
-const { generateUrlToken, hashToken } = require("../utils/cryptoTokenHandler");
+const { hashToken } = require("../utils/cryptoTokenHandler");
 
 class AuthController {
   async signUp(req, res) {
@@ -109,7 +108,10 @@ class AuthController {
     try {
       const { email, password } = req.body;
 
-      const auth = await authModel.findOne({ email: email }).populate("user");
+      const auth = await authModel
+        .findOne({ email: email })
+        .populate("user")
+        .populate("admin");
       if (!auth) {
         return sendResponse(
           res,
@@ -368,16 +370,17 @@ class AuthController {
           },
           { new: true }
         )
-        .populate("user");
+        .populate("user")
+        .populate("admin");
 
       const data = {
         authId: auth._id,
-        profileId: auth.user._id,
-        name: auth.user.name,
+        profileId: auth.user?._id || auth.admin?._id,
+        name: auth.user?.name || auth.admin?.name,
         email: auth.email,
         role: auth.role,
-        phone: auth.user.phone,
-        address: auth.user.address,
+        phone: auth.user?.phone || auth.admin?.phone,
+        address: auth.user?.address || auth.admin?.address,
       };
 
       res.cookie("accessToken", accessToken, {
@@ -414,7 +417,10 @@ class AuthController {
     try {
       const { id } = req.params;
 
-      const auth = await authModel.findById(id).populate("user");
+      const auth = await authModel
+        .findById(id)
+        .populate("user")
+        .populate("admin");
       if (!auth) {
         return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
       }
@@ -472,7 +478,10 @@ class AuthController {
     try {
       const { email } = req.body;
 
-      const auth = await authModel.findOne({ email: email }).populate("user");
+      const auth = await authModel
+        .findOne({ email: email })
+        .populate("user")
+        .populate("admin");
       if (!auth) {
         return sendResponse(
           res,
@@ -512,22 +521,11 @@ class AuthController {
         );
       }
 
-      const passwordResetToken = await generateUrlToken();
-      const hashedPasswordResetToken = hashToken(passwordResetToken);
-
-      const passwordResetUrl = path.join(
-        config.frontendUrl,
-        auth._id.toString(),
-        "password-reset",
-        passwordResetToken
-      );
-      const htmlBodyProperties = { name: auth.user.name, passwordResetUrl };
-
-      const message = await sendEmail(
-        "passwordReset.ejs",
-        htmlBodyProperties,
-        email,
-        "Reset password"
+      const { message, hashedToken } = await constructAndSendEmail(
+        auth.id,
+        auth.user?.name || auth.admin?.name,
+        auth.email,
+        "password-reset"
       );
       if (!message.messageId) {
         return sendResponse(
@@ -539,7 +537,7 @@ class AuthController {
 
       await authModel.findByIdAndUpdate(auth._id, {
         $set: {
-          passwordResetToken: hashedPasswordResetToken,
+          passwordResetToken: hashedToken,
           passwordResetTokenExpiryDate:
             Date.now() + config.passwordResetTokenValidityPeriod,
         },
