@@ -11,7 +11,13 @@ const adminSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
-      maxLength: 100,
+      maxLength: 320,
+      validate: {
+        validator: (value) => {
+          return /^[a-zA-Z0-9._+-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,4}$/.test(value);
+        },
+        message: props => `${props.value} is not a valid email`,
+      },
     },
     isSuperAdmin: {
       type: Boolean,

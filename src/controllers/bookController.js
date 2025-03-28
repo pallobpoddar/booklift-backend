@@ -1,41 +1,11 @@
-/*
- * Filename: bookController.js
- * Author: Pallob Poddar
- * Date: September 19, 2023
- * Description: This module connects the book model and sends appropriate responses
- */
-
-// Imports necessary modules
 const { validationResult } = require("express-validator");
 const HTTP_STATUS = require("../constants/statusCodes");
 const sendResponse = require("../utils/responseSender");
 const bookModel = require("../models/book");
 
-/**
- * Represents a book controller
- * @class
- */
 class bookController {
-  /**
-   * Create function to add a book's data
-   * @param {*} req
-   * @param {*} res
-   * @returns Response to the client
-   */
   async add(req, res) {
     try {
-      // If the user provides invalid information, it returns an error
-      // const validation = validationResult(req).array();
-      // if (validation.length > 0) {
-      // 	return sendResponse(
-      // 		res,
-      // 		HTTP_STATUS.UNPROCESSABLE_ENTITY,
-      // 		"Failed to add the book",
-      // 		validation
-      // 	);
-      // }
-
-      // Destructures necessary elements from request body
       const {
         title,
         author,
@@ -48,18 +18,16 @@ class bookController {
         isbn,
       } = req.body;
 
-      // If the book is already registered, it returns an error
-      // const bookRegistered = await bookModel.findOne({ isbn: isbn });
-      // if (bookRegistered) {
-      // 	return sendResponse(
-      // 		res,
-      // 		HTTP_STATUS.CONFLICT,
-      // 		"Book already exists",
-      // 		"Conflict"
-      // 	);
-      // }
+      const bookRegistered = await bookModel.findOne({ isbn: isbn });
+      if (bookRegistered) {
+      	return sendResponse(
+      		res,
+      		HTTP_STATUS.CONFLICT,
+      		"Book already exists",
+      		"Conflict"
+      	);
+      }
 
-      // Creates a book document
       const book = await bookModel.create({
         title: title,
         author: author,
@@ -72,14 +40,12 @@ class bookController {
         stock: stock,
       });
 
-      // Converts the mongoDB document to a javascript object	and deletes unnecessary fields
       const bookFilteredInfo = book.toObject();
       delete bookFilteredInfo._id;
       delete bookFilteredInfo.createdAt;
       delete bookFilteredInfo.updatedAt;
       delete bookFilteredInfo.__v;
 
-      // Returns book data
       return sendResponse(
         res,
         HTTP_STATUS.OK,
@@ -87,7 +53,6 @@ class bookController {
         bookFilteredInfo
       );
     } catch (error) {
-      // Returns an error
       return sendResponse(
         res,
         HTTP_STATUS.INTERNAL_SERVER_ERROR,
