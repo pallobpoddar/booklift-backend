@@ -12,7 +12,8 @@ const authGuard = (roles) => {
         return sendResponse(
           res,
           HTTP_STATUS.UNAUTHORIZED,
-          "Access token required"
+          "Access token required",
+          "ACCESS_TOKEN_REQUIRED"
         );
       }
 

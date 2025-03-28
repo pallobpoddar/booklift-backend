@@ -258,20 +258,24 @@ class AuthController {
     try {
       const { id } = req.params;
 
-      const accessToken = req.cookies.accessToken;
       const refreshToken = req.cookies.refreshToken;
-      if (accessToken || !refreshToken) {
-        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
+      if (!refreshToken) {
+        return sendResponse(
+          res,
+          HTTP_STATUS.UNAUTHORIZED,
+          "Refresh token required",
+          "INVALID_REFRESH_TOKEN"
+        );
       }
 
       const decoded = await verifyRefreshToken(refreshToken);
       if (!decoded) {
-        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
+        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Invalid refresh token", "INVALID_REFRESH_TOKEN");
       }
 
       const auth = await authModel.findById(id);
       if (!auth) {
-        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
+        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized", "INVALID_REFRESH_TOKEN");
       }
 
       const hashedCookieRefreshToken = hashToken(refreshToken);
@@ -284,7 +288,7 @@ class AuthController {
         });
         res.clearCookie("refreshToken");
 
-        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
+        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized", "INVALID_REFRESH_TOKEN");
       }
 
       const newAccessToken = await generateAccessToken({ sub: id });
@@ -311,12 +315,13 @@ class AuthController {
         return sendResponse(
           res,
           HTTP_STATUS.UNAUTHORIZED,
-          "Please sign in again"
+          "Refresh token is expired",
+          "INVALID_REFRESH_TOKEN"
         );
       }
 
       if (error instanceof jwt.JsonWebTokenError) {
-        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Unauthorized");
+        return sendResponse(res, HTTP_STATUS.UNAUTHORIZED, "Invalid refresh token", "INVALID_REFRESH_TOKEN");
       }
 
       return sendResponse(
