@@ -8,7 +8,7 @@
 // Imports necessary modules
 const express = require("express");
 const bookRoutes = express();
-const bookValidator = require("../validators/bookValidation");
+const bookValidator = require("../validators/bookValidator");
 const bookController = require("../controllers/bookController");
 
 // Sets up the routes, invokes corresponding APIs and book controller methods
@@ -22,21 +22,18 @@ bookRoutes.post(
 bookRoutes.get(
 	"/all",
 	// isAuthenticated,
-	bookValidator.commonValidation,
 	bookController.getAll
 );
 bookRoutes.patch(
 	"/update-one-by-id/:id",
 	// isAuthenticated,
 	// isAuthorized,
-	bookValidator.commonValidation,
 	bookController.updateOneByID
 );
 bookRoutes.delete(
 	"/delete-one-by-id/:id",
 	// isAuthenticated,
 	// isAuthorized,
-	bookValidator.commonValidation,
 	bookController.deleteOneByID
 );
 

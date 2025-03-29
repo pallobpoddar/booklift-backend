@@ -1,14 +1,17 @@
 const {
-  validateName,
+  validateString,
   validateEmail,
   validatePassword,
-  validateConfirmPassword,
   validateId,
   validateToken,
 } = require("./commonValidator");
 
 const authValidator = {
-  validateSignup: [validateName(), validateEmail(), validatePassword()],
+  validateSignup: [
+    validateString("name", "Name", 100),
+    validateEmail(),
+    validatePassword(),
+  ],
 
   validateSignin: [
     validateEmail("Incorrect email or password"),
@@ -33,7 +36,6 @@ const authValidator = {
     validateId(),
     validatePassword("currentPassword", "Incorrect password"),
     validatePassword("newPassword"),
-    validateConfirmPassword(),
   ],
 };
 

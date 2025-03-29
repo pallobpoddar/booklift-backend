@@ -30,6 +30,12 @@ const bookSchema = new mongoose.Schema(
         },
       ],
       required: true,
+      validate: {
+        validator: (authors) => {
+          return authors.length >= 1 && authors.length <= 10;
+        },
+        message: "Number of authors must be between 1 and 10",
+      },
     },
     image: {
       type: String,
@@ -74,6 +80,12 @@ const bookSchema = new mongoose.Schema(
         },
       ],
       required: true,
+      validate: {
+        validator: (categories) => {
+          return categories.length >= 1 && categories.length <= 10;
+        },
+        message: "Number of categories must be between 1 and 10",
+      },
     },
     stock: {
       type: Number,
@@ -86,8 +98,8 @@ const bookSchema = new mongoose.Schema(
       required: true,
       unique: true,
       validate: {
-        validator: function (v) {
-          return /^(?:\d{10}|\d{13})$/.test(v.toString());
+        validator: function (isbn) {
+          return /^(?:\d{10}|\d{13})$/.test(isbn.toString());
         },
         message: (props) => `${props.value} is not a valid ISBN number`,
       },
@@ -105,11 +117,6 @@ const bookSchema = new mongoose.Schema(
       type: String,
       required: true,
       maxLength: 50,
-    },
-    readingAge: {
-      type: String,
-      required: true,
-      maxLength: 100,
     },
     pages: {
       type: Number,

@@ -1,18 +1,18 @@
 const { body, param } = require("express-validator");
 
-const validateName = () => {
-  return body("name")
+const validateString = (field, convertedField, max) => {
+  return body(field)
     .exists()
-    .withMessage("Name is required")
+    .withMessage(`${convertedField} is required`)
     .bail()
     .isString()
-    .withMessage("Name must contain characters")
+    .withMessage(`${convertedField} must contain characters`)
     .bail()
     .trim()
     .notEmpty()
-    .withMessage("Name can't be empty")
+    .withMessage(`${convertedField} can't be empty`)
     .bail()
-    .isLength({ max: 100 })
+    .isLength({ max: max })
     .withMessage("Character limit exceeded");
 };
 
@@ -46,19 +46,6 @@ const validatePassword = (field = "password", message) => {
     .withMessage(message || "Character limit exceeded");
 };
 
-const validateConfirmPassword = () => {
-  return body("confirmPassword")
-    .exists()
-    .withMessage("Confirm password is required")
-    .bail()
-    .custom((value, { req }) => {
-      if (value !== req.body.password) {
-        throw new Error("Passwords don't match");
-      }
-      return true;
-    });
-};
-
 const validateId = () => {
   return param("id")
     .exists()
@@ -73,18 +60,31 @@ const validateToken = () => {
     .exists()
     .withMessage("Token is required")
     .bail()
-    .isLength({ min: 64, max: 64 })
-    .withMessage("Invalid token")
-    .bail()
-    .matches(/^[a-f0-9]{64}$/i)
+    .matches(/^[a-f0-9]{64}$/)
     .withMessage("Invalid token");
 };
 
+const validateArray = (field, min, max) => {
+  return body(field)
+    .isArray({ min: min, max: max })
+    .withMessage(`Number of ${field} must be between ${min} and ${max}`);
+};
+
+const validateInt = (field, convertedField, min, max) => {
+  body(field)
+    .exists()
+    .withMessage(`${convertedField} is required`)
+    .bail()
+    .isInt({ min: min, max: max })
+    .withMessage(`${convertedField} must be between ${min} and ${max}`);
+};
+
 module.exports = {
-  validateName,
+  validateString,
   validateEmail,
   validatePassword,
-  validateConfirmPassword,
   validateId,
   validateToken,
+  validateArray,
+  validateInt,
 };

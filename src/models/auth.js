@@ -8,8 +8,8 @@ const authSchema = new mongoose.Schema(
       unique: true,
       maxLength: 320,
       validate: {
-        validator: (value) => {
-          return /^[a-zA-Z0-9._+-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,4}$/.test(value);
+        validator: (email) => {
+          return /^[a-zA-Z0-9._+-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,4}$/.test(email);
         },
         message: (props) => `${props.value} is not a valid email`,
       },
@@ -38,12 +38,24 @@ const authSchema = new mongoose.Schema(
     },
     emailVerificationToken: {
       type: String,
+      validate: {
+        validator: (emailVerificationToken) => {
+          return /^[a-f0-9]{64}$/.test(emailVerificationToken);
+        },
+        message: (props) => `${props.value} is not a valid token`,
+      },
     },
     emailVerificationTokenExpiryDate: {
       type: Date,
     },
     refreshToken: {
       type: String,
+      validate: {
+        validator: (refreshToken) => {
+          return /^[a-f0-9]{64}$/.test(refreshToken);
+        },
+        message: (props) => `${props.value} is not a valid token`,
+      },
     },
     numberOfFailedSignin: {
       type: Number,
@@ -58,6 +70,12 @@ const authSchema = new mongoose.Schema(
     },
     passwordResetToken: {
       type: String,
+      validate: {
+        validator: (passwordResetToken) => {
+          return /^[a-f0-9]{64}$/.test(passwordResetToken);
+        },
+        message: (props) => `${props.value} is not a valid token`,
+      },
     },
     passwordResetTokenExpiryDate: {
       type: Date,
