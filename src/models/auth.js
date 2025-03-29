@@ -11,7 +11,7 @@ const authSchema = new mongoose.Schema(
         validator: (value) => {
           return /^[a-zA-Z0-9._+-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,4}$/.test(value);
         },
-        message: props => `${props.value} is not a valid email`,
+        message: (props) => `${props.value} is not a valid email`,
       },
     },
     password: {
@@ -25,12 +25,11 @@ const authSchema = new mongoose.Schema(
       default: "User",
     },
     admin: {
-      type: mongoose.Types.ObjectId || null,
+      type: mongoose.Types.ObjectId,
       ref: "Admin",
-      default: null,
     },
     user: {
-      type: mongoose.Types.ObjectId || null,
+      type: mongoose.Types.ObjectId,
       ref: "User",
     },
     isVerified: {
@@ -38,40 +37,33 @@ const authSchema = new mongoose.Schema(
       default: false,
     },
     emailVerificationToken: {
-      type: String || null,
-      default: null,
+      type: String,
     },
     emailVerificationTokenExpiryDate: {
-      type: Date || null,
-      default: null,
+      type: Date,
     },
     refreshToken: {
-      type: String || null,
-      default: null,
+      type: String,
     },
     numberOfFailedSignin: {
       type: Number,
       default: 0,
     },
     signinBlockedUntil: {
-      type: Date || null,
-      default: null,
+      type: Date,
     },
     numberOfPasswordResetEmailSent: {
       type: Number,
       default: 0,
     },
     passwordResetToken: {
-      type: String || null,
-      default: null,
+      type: String,
     },
     passwordResetTokenExpiryDate: {
-      type: Date || null,
-      default: null,
+      type: Date,
     },
     passwordResetBlockedUntil: {
-      type: Date || null,
-      default: null,
+      type: Date,
     },
   },
   { timestamps: true }
