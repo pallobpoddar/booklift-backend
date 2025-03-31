@@ -6,7 +6,7 @@ const {
 } = require("./commonValidator");
 
 const bookValidator = {
-  validateBookAddition: [
+  validateAddition: [
     validateString("title", "Title", 200),
     validateArray("authors", 1, 10),
     validateString("authors.*.name", "Author name", 100),

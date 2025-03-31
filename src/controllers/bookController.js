@@ -3,61 +3,62 @@ const HTTP_STATUS = require("../constants/statusCodes");
 const sendResponse = require("../utils/responseSender");
 const bookModel = require("../models/book");
 
-class bookController {
+class BookController {
   async add(req, res) {
     try {
       const {
         title,
-        author,
-        description,
+        authors,
         price,
+        discount,
+        overview,
+        categories,
         stock,
-        language,
-        category,
-        year,
         isbn,
+        publisher,
+        publicationDate,
+        language,
+        pages,
+        dimensions,
       } = req.body;
 
-      const bookRegistered = await bookModel.findOne({ isbn: isbn });
-      if (bookRegistered) {
-      	return sendResponse(
-      		res,
-      		HTTP_STATUS.CONFLICT,
-      		"Book already exists",
-      		"Conflict"
-      	);
+      const existingBook = await bookModel.findOne({ isbn: isbn });
+      if (existingBook) {
+        return sendResponse(res, HTTP_STATUS.CONFLICT, "Book already exists");
       }
 
       const book = await bookModel.create({
         title: title,
-        author: author,
-        year: year,
-        description: description,
-        language: language,
-        category: category,
-        isbn: isbn,
+        authors: authors,
         price: price,
+        discount: discount,
+        overview: overview,
+        categories: categories,
         stock: stock,
+        isbn: isbn,
+        publisher: publisher,
+        publicationDate: publicationDate,
+        language: language,
+        pages: pages,
+        dimensions: dimensions,
       });
 
-      const bookFilteredInfo = book.toObject();
-      delete bookFilteredInfo._id;
-      delete bookFilteredInfo.createdAt;
-      delete bookFilteredInfo.updatedAt;
-      delete bookFilteredInfo.__v;
+      delete book.createdAt;
+      delete book.updatedAt;
+      delete book.__v;
 
       return sendResponse(
         res,
         HTTP_STATUS.OK,
         "Successfully added the book",
-        bookFilteredInfo
+        book
       );
     } catch (error) {
+      console.error(error);
       return sendResponse(
         res,
         HTTP_STATUS.INTERNAL_SERVER_ERROR,
-        "Internal server error",
-        "Server error"
+        "Internal server error"
       );
     }
   }
@@ -359,4 +360,4 @@ class bookController {
 }
 
 // Exports the book controller
-module.exports = new bookController();
+module.exports = new BookController();

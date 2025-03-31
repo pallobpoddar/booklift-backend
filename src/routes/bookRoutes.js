@@ -1,22 +1,15 @@
-/*
- * Filename: bookRoutes.js
- * Author: Pallob Poddar
- * Date: September 18, 2023
- * Description: This module connects the book routes with the book controller
- */
-
-// Imports necessary modules
 const express = require("express");
 const bookRoutes = express();
 const bookValidator = require("../validators/bookValidator");
 const bookController = require("../controllers/bookController");
+const handleValidationErrors = require("../middleware/validationMiddleware");
+const authGuard = require("../middleware/authGuard");
 
-// Sets up the routes, invokes corresponding APIs and book controller methods
 bookRoutes.post(
-	"/add",
-	// isAuthenticated,
-	// isAuthorized,
-	// bookValidator.bookAdd,
+	"/",
+	authGuard("Admin"),
+	bookValidator.validateAddition,
+	handleValidationErrors,
 	bookController.add
 );
 bookRoutes.get(
@@ -37,5 +30,4 @@ bookRoutes.delete(
 	bookController.deleteOneByID
 );
 
-// Exports the book routes
 module.exports = bookRoutes;
